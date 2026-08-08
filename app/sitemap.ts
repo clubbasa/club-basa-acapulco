@@ -1,0 +1,2 @@
+import type {MetadataRoute} from 'next';
+export default function sitemap():MetadataRoute.Sitemap{const base=process.env.NEXT_PUBLIC_SITE_URL||'https://club-basa.vercel.app';return ['','/blog','/login'].map(path=>({url:base+path,lastModified:new Date()}))}
