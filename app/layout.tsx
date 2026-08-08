@@ -1,0 +1,5 @@
+import type {Metadata} from 'next';
+import './globals.css';
+import Script from 'next/script';
+export const metadata:Metadata={title:'Club BASA Acapulco | Panquecitos, waffles, crepas y malteadas',description:'Catálogo interactivo de Club BASA Acapulco. Panquecitos, waffles, crepas, malteadas, té, aloe y más. Pide fácil por WhatsApp.',metadataBase:new URL(process.env.NEXT_PUBLIC_SITE_URL||'https://club-basa.vercel.app'),openGraph:{title:'Club BASA Acapulco',description:'Sabor que enamora. Nutrición que transforma.',type:'website'},robots:{index:true,follow:true}};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="es-MX"><body>{children}{process.env.NEXT_PUBLIC_GA_ID&&<><Script src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`} strategy="afterInteractive"/><Script id="ga4" strategy="afterInteractive">{`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${process.env.NEXT_PUBLIC_GA_ID}',{anonymize_ip:true});`}</Script></>}</body></html>}
