@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';
+export async function POST(req:Request){const body=await req.json().catch(()=>null);if(!body?.event)return NextResponse.json({ok:false},{status:400});console.log('analytics',body);return NextResponse.json({ok:true});}
