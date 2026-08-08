@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';
+export async function GET(){return NextResponse.json({ok:false,message:'Exportación CSV/PDF debe ejecutarse en servidor autenticado con Firebase Admin y permisos de administrador.'},{status:501});}
