@@ -1,0 +1,1 @@
+export function track(event:string, data:Record<string,unknown>={}){if(typeof window==='undefined')return; const g=(window as any).gtag; if(g)g('event',event,data); try{navigator.sendBeacon?.('/api/analytics',new Blob([JSON.stringify({event,data,ts:Date.now()})],{type:'application/json'}))}catch{}}
