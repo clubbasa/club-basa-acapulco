@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://club-basa.vercel.app/sitemap.xml
