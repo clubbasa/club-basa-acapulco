@@ -1,0 +1,89 @@
+'use client';
+
+import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { products as fallbackProducts, type Product } from '@/lib/menu';
+
+export type CatalogCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  active: boolean;
+  sortOrder: number;
+};
+
+export type CatalogProduct = Product & {
+  active: boolean;
+  image?: string;
+  sortOrder: number;
+  updatedAt?: unknown;
+};
+
+const productsRef = collection(db, 'products');
+const categoriesRef = collection(db, 'categories');
+
+export async function getCatalog() {
+  const [productSnap, categorySnap] = await Promise.all([
+    getDocs(query(productsRef, orderBy('sortOrder', 'asc'))),
+    getDocs(query(categoriesRef, orderBy('sortOrder', 'asc'))),
+  ]);
+
+  const products = productSnap.docs
+    .map((item) => ({ id: item.id, ...item.data() } as CatalogProduct))
+    .filter((item) => item.active !== false);
+
+  const categories = categorySnap.docs
+    .map((item) => ({ id: item.id, ...item.data() } as CatalogCategory))
+    .filter((item) => item.active !== false);
+
+  return { products, categories };
+}
+
+export function getFallbackProducts(): CatalogProduct[] {
+  return fallbackProducts.map((product, index) => ({
+    ...product,
+    active: true,
+    sortOrder: index,
+  }));
+}
+
+export function getFallbackCategories(): CatalogCategory[] {
+  return Array.from(new Set(fallbackProducts.map((p) => p.category))).map((name, index) => ({
+    id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    name,
+    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    active: true,
+    sortOrder: index,
+  }));
+}
+
+export async function saveProduct(product: CatalogProduct) {
+  await setDoc(doc(productsRef, product.id), {
+    ...product,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function removeProduct(id: string) {
+  await deleteDoc(doc(productsRef, id));
+}
+
+export async function saveCategory(category: CatalogCategory) {
+  await setDoc(doc(categoriesRef, category.id), {
+    ...category,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function removeCategory(id: string) {
+  await deleteDoc(doc(categoriesRef, id));
+}
+
+export async function seedCatalog() {
+  const categories = getFallbackCategories();
+  const products = getFallbackProducts();
+  await Promise.all([
+    ...categories.map(saveCategory),
+    ...products.map(saveProduct),
+  ]);
+}
