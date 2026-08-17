@@ -14,8 +14,6 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      // Firebase se carga solo al enviar el formulario. Así un problema de configuración
-      // de Firebase no puede romper la renderización inicial de /login.
       const [{ signInWithEmailAndPassword }, { auth }] = await Promise.all([
         import('firebase/auth'),
         import('@/lib/firebase'),
@@ -24,7 +22,8 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       window.location.assign('/admin');
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
+      const code = (err as { code?: string })?.code || 'unknown';
+      const rawMessage = (err as { message?: string })?.message || '';
       const messages: Record<string, string> = {
         'auth/invalid-credential': 'Correo o contraseña incorrectos.',
         'auth/user-not-found': 'No existe una cuenta con ese correo.',
@@ -32,8 +31,12 @@ export default function Login() {
         'auth/invalid-api-key': 'La configuración de Firebase no está disponible en este deployment.',
         'auth/operation-not-allowed': 'El acceso con correo y contraseña no está habilitado en Firebase Authentication.',
         'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión e inténtalo de nuevo.',
+        'auth/too-many-requests': 'Firebase bloqueó temporalmente los intentos. Espera unos minutos antes de volver a intentar.',
+        'auth/invalid-email': 'El formato del correo electrónico no es válido.',
       };
-      setMsg(messages[code || ''] || 'No fue posible iniciar sesión. Revisa la configuración de Firebase y los datos e inténtalo de nuevo.');
+
+      const friendly = messages[code] || `Firebase rechazó el inicio de sesión (${code}).`;
+      setMsg(`${friendly} ${rawMessage && !messages[code] ? rawMessage : ''}`.trim());
       setSubmitting(false);
     }
   }
