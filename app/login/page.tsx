@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -16,6 +14,13 @@ export default function Login() {
     setSubmitting(true);
 
     try {
+      // Firebase se carga solo al enviar el formulario. Así un problema de configuración
+      // de Firebase no puede romper la renderización inicial de /login.
+      const [{ signInWithEmailAndPassword }, { auth }] = await Promise.all([
+        import('firebase/auth'),
+        import('@/lib/firebase'),
+      ]);
+
       await signInWithEmailAndPassword(auth, email.trim(), password);
       window.location.assign('/admin');
     } catch (err: unknown) {
@@ -28,7 +33,7 @@ export default function Login() {
         'auth/operation-not-allowed': 'El acceso con correo y contraseña no está habilitado en Firebase Authentication.',
         'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión e inténtalo de nuevo.',
       };
-      setMsg(messages[code || ''] || 'No fue posible iniciar sesión. Revisa los datos e inténtalo de nuevo.');
+      setMsg(messages[code || ''] || 'No fue posible iniciar sesión. Revisa la configuración de Firebase y los datos e inténtalo de nuevo.');
       setSubmitting(false);
     }
   }
