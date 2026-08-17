@@ -5,8 +5,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCategory, saveProduct, seedCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
+import { productVideoProviders } from '@/lib/video';
 
-const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0 };
+const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '' };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
@@ -87,7 +88,13 @@ export default function Admin() {
 
     let uploadedPath = '';
     try {
-      let productToSave = { ...product, price: Number(product.price), sortOrder: Number(product.sortOrder) };
+      let productToSave = {
+        ...product,
+        price: Number(product.price),
+        sortOrder: Number(product.sortOrder),
+        videoUrl: product.videoUrl?.trim() || '',
+        videoProvider: product.videoUrl?.trim() ? product.videoProvider : undefined,
+      };
       const oldImagePath = product.imagePath;
 
       if (selectedImage) {
@@ -143,12 +150,12 @@ export default function Admin() {
   if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><a className="btn secondary" href="/">Volver al catálogo</a></main>;
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
-    <span className="eyebrow">Admin • Firestore + Storage</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios e imágenes se administran desde aquí.</p>
+    <span className="eyebrow">Admin • Firestore + Storage</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
 
-    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}><strong>{item.name}</strong><p>{item.category} · ${item.price}</p>{item.image && <img src={item.image} alt={item.name} style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />}<small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div></div>)}</div></section>
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}><strong>{item.name}</strong><p>{item.category} · ${item.price}</p>{item.image && <img src={item.image} alt={item.name} style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />}<small>{item.videoUrl ? `Video: ${item.videoProvider || 'embed'}` : 'Sin video'}</small><br/><small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div></div>)}</div></section>
 
     <section ref={productEditorRef} style={{ padding: '25px 0', scrollMarginTop: 20 }}><div className="card"><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h2>{product.id ? 'Editar producto' : 'Nuevo producto'}</h2>{product.id && <button type="button" className="btn secondary" onClick={newProduct}>Nuevo producto</button>}</div><div className="grid3">
       <div className="field"><label>ID único</label><input value={product.id} onChange={(e) => setProduct({ ...product, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })} placeholder="six" /></div>
@@ -169,6 +176,15 @@ export default function Admin() {
           {selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}
         </div>
       </div>
+    </div>
+
+    <div className="field" style={{ marginTop: 24 }}><label>Video del producto</label>
+      <div className="grid3">
+        <div className="field"><label>Fuente</label><select value={product.videoProvider || ''} onChange={(e) => setProduct({ ...product, videoProvider: (e.target.value || undefined) as CatalogProduct['videoProvider'] })}><option value="">Sin video</option>{productVideoProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></div>
+        <div className="field" style={{ gridColumn: 'span 2' }}><label>URL del video</label><input value={product.videoUrl || ''} onChange={(e) => setProduct({ ...product, videoUrl: e.target.value })} placeholder="https://..." /></div>
+      </div>
+      {product.videoProvider && <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6b7280' }}>{productVideoProviders.find((item) => item.value === product.videoProvider)?.hint}</p>}
+      <div className="card" style={{ marginTop: 12, background: '#fffaf5' }}><strong>Fuentes aceptadas</strong><p style={{ marginBottom: 8 }}>YouTube · Google Drive · Vimeo · Hotmart · Udemy · MP4 · HLS (.m3u8) · Otro / iframe.</p><small>La reproducción depende de que la plataforma permita incrustar el video. Una URL privada o protegida no se puede convertir mágicamente en un reproductor público.</small></div>
     </div>
 
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 18 }}><button type="button" className="btn primary" onClick={saveProductForm} disabled={savingProduct}>{savingProduct ? 'Guardando…' : 'Guardar producto'}</button>{selectedImage && <button type="button" className="btn secondary" onClick={resetImageSelection} disabled={savingProduct}>Cancelar imagen</button>}</div></div></section>
