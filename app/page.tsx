@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { getCatalog, getFallbackCategories, getFallbackProducts, type CatalogProduct } from '@/lib/catalog';
+import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import Reveal from '@/components/Reveal';
@@ -67,6 +68,7 @@ export default function Home() {
     track('share_landing');
   };
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`Mira el menú de Club BASA Acapulco: ${siteUrl}`)}`;
+  const selectedVideo = selectedProduct ? getProductVideoEmbed(selectedProduct.videoProvider, selectedProduct.videoUrl) : null;
 
   return <>
     <header className="nav"><div className="container navin">
@@ -89,15 +91,7 @@ export default function Home() {
       <section id="menu"><Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
         <div className="categoryTabs" role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
-        <div className="menuGrid">{visibleProducts.map((product) => <article
-          className="menuCard"
-          key={product.id}
-          role="button"
-          tabIndex={0}
-          aria-label={`Ver detalles de ${product.name}`}
-          onClick={() => openProduct(product)}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}
-        >
+        <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div> : <div className="menuImage menuImageEmpty" aria-hidden="true">Sin imagen</div>}
           <div className="menuTop"><strong>{product.name}</strong><span className="tag">{product.category}</span></div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
         </article>)}</div>
@@ -115,11 +109,7 @@ export default function Home() {
       <section id="contacto"><Reveal><div className="container contact"><div><div className="sectionHead"><h2>¿Quieres recibir promociones?</h2><p>Regístrate para acceder a promociones especiales y novedades.</p></div><button className="btn primary" onClick={() => { window.location.href = '/login'; }}>Crear mi cuenta</button></div><ContactForm/></div></Reveal></section>
     </main>
 
-    {selectedProduct && <div
-      className="productModalBackdrop"
-      role="presentation"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}
-    >
+    {selectedProduct && <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
       <section className="productModal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" onMouseDown={(event) => event.stopPropagation()}>
         <button className="productModalClose" aria-label="Cerrar detalles del producto" onClick={() => setSelectedProduct(null)}>×</button>
         {selectedProduct.image ? <div className="productModalImage"><Image src={selectedProduct.image} alt={selectedProduct.name} fill sizes="(max-width: 760px) 100vw, 760px" priority/></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
@@ -128,6 +118,16 @@ export default function Home() {
           <p className="productModalDescription">{selectedProduct.description}</p>
           {selectedProduct.availability && <span className="small">{selectedProduct.availability}</span>}
           <div className="productModalPrice">{selectedProduct.price ? `$${selectedProduct.price}` : 'Consultar'}</div>
+
+          {selectedVideo && <div className="productVideoSection">
+            <div className="productVideoHeader"><strong>Video del producto</strong><span>{selectedProduct.videoProvider === 'google-drive' ? 'Google Drive' : selectedProduct.videoProvider === 'vimeo' ? 'Vimeo' : selectedProduct.videoProvider === 'youtube' ? 'YouTube' : selectedProduct.videoProvider === 'hotmart' ? 'Hotmart' : selectedProduct.videoProvider === 'udemy' ? 'Udemy' : 'Video'}</span></div>
+            <div className="productVideoFrame">
+              {selectedVideo.kind === 'video'
+                ? <video controls playsInline preload="metadata" src={selectedVideo.src} />
+                : <iframe src={selectedVideo.src} title={`Video de ${selectedProduct.name}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen />}
+            </div>
+          </div>}
+
           <div className="productModalActions">
             <div className="qty"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>+</button></div>
             <button className="btn primary productModalAdd" onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>Agregar al carrito</button>
