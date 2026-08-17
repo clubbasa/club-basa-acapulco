@@ -1,6 +1,7 @@
 'use client';
 
-import { collection, deleteDoc, deleteObject, doc, getDocs, orderBy, query, serverTimestamp, setDoc, ref, uploadBytes, getDownloadURL } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { products as fallbackProducts, type Product } from '@/lib/menu';
 
