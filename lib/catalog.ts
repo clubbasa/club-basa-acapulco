@@ -1,5 +1,3 @@
-'use client';
-
 import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
@@ -71,6 +69,8 @@ export async function uploadProductImage(productId: string, file: File) {
   const imagePath = `products/${productId}/${Date.now()}-${safeName}`;
   const imageRef = ref(storage, imagePath);
 
+  // The original file is uploaded without resizing or compression so high-resolution
+  // product photos keep their original dimensions and visual quality.
   const snapshot = await uploadBytes(imageRef, file, {
     contentType: file.type,
     cacheControl: 'public,max-age=31536000',
