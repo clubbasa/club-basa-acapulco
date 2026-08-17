@@ -1,7 +1,7 @@
 'use client';
 
-import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, deleteDoc, deleteObject, doc, getDocs, orderBy, query, serverTimestamp, setDoc, ref, uploadBytes, getDownloadURL } from 'firebase/firestore';
+import { db, storage } from '@/lib/firebase';
 import { products as fallbackProducts, type Product } from '@/lib/menu';
 
 export type CatalogCategory = {
@@ -15,6 +15,7 @@ export type CatalogCategory = {
 export type CatalogProduct = Product & {
   active: boolean;
   image?: string;
+  imagePath?: string;
   sortOrder: number;
   updatedAt?: unknown;
 };
@@ -62,6 +63,25 @@ export async function saveProduct(product: CatalogProduct) {
     ...product,
     updatedAt: serverTimestamp(),
   }, { merge: true });
+}
+
+export async function uploadProductImage(productId: string, file: File) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const imagePath = `products/${productId}/${Date.now()}-${safeName}`;
+  const imageRef = ref(storage, imagePath);
+
+  const snapshot = await uploadBytes(imageRef, file, {
+    contentType: file.type,
+    cacheControl: 'public,max-age=31536000',
+  });
+
+  const image = await getDownloadURL(snapshot.ref);
+  return { image, imagePath };
+}
+
+export async function removeProductImage(imagePath?: string) {
+  if (!imagePath) return;
+  await deleteObject(ref(storage, imagePath));
 }
 
 export async function removeProduct(id: string) {
