@@ -155,7 +155,11 @@ export default function Admin() {
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
 
-    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}><strong>{item.name}</strong><p>{item.category} · ${item.price}</p>{item.image && <img src={item.image} alt={item.name} style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 12, marginTop: 10 }} />}<small>{item.videoUrl ? `Video: ${item.videoProvider || 'embed'}` : 'Sin video'}</small><br/><small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div></div>)}</div></section>
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}>
+      <strong>{item.name}</strong><p>{item.category} · ${item.price}</p>
+      {item.image ? <div style={{ width: '100%', aspectRatio: '16 / 9', marginTop: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid #eadfd4', background: '#fff8ef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={item.image} alt={item.name} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} /></div> : <div style={{ width: '100%', aspectRatio: '16 / 9', marginTop: 10, borderRadius: 12, border: '1px solid #eadfd4', background: '#fff8ef', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>Sin imagen</div>}
+      <small>{item.videoUrl ? `Video: ${item.videoProvider || 'embed'}` : 'Sin video'}</small><br/><small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div>
+    </div>)}</div></section>
 
     <section ref={productEditorRef} style={{ padding: '25px 0', scrollMarginTop: 20 }}><div className="card"><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h2>{product.id ? 'Editar producto' : 'Nuevo producto'}</h2>{product.id && <button type="button" className="btn secondary" onClick={newProduct}>Nuevo producto</button>}</div><div className="grid3">
       <div className="field"><label>ID único</label><input value={product.id} onChange={(e) => setProduct({ ...product, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })} placeholder="six" /></div>
@@ -168,7 +172,7 @@ export default function Admin() {
 
     <div className="field" style={{ marginTop: 18 }}><label>Imagen del producto</label>
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-        {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 150, height: 110, objectFit: 'cover', borderRadius: 12, border: '1px solid #ddd' }} />}
+        {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 220, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'contain', background: '#fff8ef', borderRadius: 12, border: '1px solid #ddd' }} />}
         <div>
           <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} />
           <button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button>
