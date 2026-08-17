@@ -2,6 +2,7 @@ import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, s
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { products as fallbackProducts, type Product } from '@/lib/menu';
+import type { ProductVideoProvider } from '@/lib/video';
 
 export type CatalogCategory = {
   id: string;
@@ -15,6 +16,8 @@ export type CatalogProduct = Product & {
   active: boolean;
   image?: string;
   imagePath?: string;
+  videoProvider?: ProductVideoProvider;
+  videoUrl?: string;
   sortOrder: number;
   updatedAt?: unknown;
 };
