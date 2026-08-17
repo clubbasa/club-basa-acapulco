@@ -8,6 +8,7 @@ import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCate
 
 const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0 };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
+const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -71,12 +72,12 @@ export default function Admin() {
   const chooseImage = (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) return setMessage('Selecciona una imagen válida.');
-    if (file.size > 5 * 1024 * 1024) return setMessage('La imagen no puede superar 5 MB.');
+    if (file.size > MAX_IMAGE_SIZE) return setMessage('La imagen no puede superar 15 MB.');
 
     if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
-    setMessage('Imagen seleccionada. Pulsa “Guardar producto” para subirla y reemplazar la anterior.');
+    setMessage('Imagen de alta calidad seleccionada. Pulsa “Guardar producto” para subirla y reemplazar la anterior.');
   };
 
   const saveProductForm = async () => {
@@ -162,10 +163,10 @@ export default function Admin() {
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
         {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 150, height: 110, objectFit: 'cover', borderRadius: 12, border: '1px solid #ddd' }} />}
         <div>
-          <input ref={imageInputRef} type="file" accept="image/*" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} />
+          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} />
           <button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button>
-          <p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP o similar. Máximo 5 MB.</p>
-          {selectedImage && <small>Seleccionada: {selectedImage.name}</small>}
+          <p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP, AVIF, HEIC/HEIF. Máximo 15 MB. Se conserva la resolución y calidad original.</p>
+          {selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}
         </div>
       </div>
     </div>
