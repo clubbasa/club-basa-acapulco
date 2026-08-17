@@ -17,6 +17,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -36,12 +37,30 @@ export default function Home() {
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedProduct(null);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [selectedProduct]);
+
   const visibleProducts = useMemo(() => activeCategory === 'Todos'
     ? products.filter((p) => p.id !== 'coffee')
     : products.filter((p) => p.category === activeCategory && p.id !== 'coffee'), [products, activeCategory]);
   const items = useMemo(() => Object.entries(cart).map(([id, qty]) => ({ id, qty })).filter((x) => x.qty > 0), [cart]);
   const total = items.reduce((sum, item) => sum + (products.find((p) => p.id === item.id)?.price || 0) * item.qty, 0);
   const add = (id: string, delta: number) => setCart((current) => ({ ...current, [id]: Math.max(0, (current[id] || 0) + delta) }));
+  const openProduct = (product: CatalogProduct) => {
+    setSelectedProduct(product);
+    track('view_product', { product: product.name });
+  };
   const share = async () => {
     const data = { title: 'Club BASA Acapulco', text: 'Mira el menú de Club BASA 👇', url: window.location.href };
     if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
@@ -70,9 +89,17 @@ export default function Home() {
       <section id="menu"><Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
         <div className="categoryTabs" role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
-        <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id}>
-          {product.image && <div className="menuImage"><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div>}
-          <div className="menuTop"><strong>{product.name}</strong><span className="tag">{product.category}</span></div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={() => add(product.id, -1)}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={() => { add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
+        <div className="menuGrid">{visibleProducts.map((product) => <article
+          className="menuCard"
+          key={product.id}
+          role="button"
+          tabIndex={0}
+          aria-label={`Ver detalles de ${product.name}`}
+          onClick={() => openProduct(product)}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}
+        >
+          {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div> : <div className="menuImage menuImageEmpty" aria-hidden="true">Sin imagen</div>}
+          <div className="menuTop"><strong>{product.name}</strong><span className="tag">{product.category}</span></div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
         </article>)}</div>
         {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
       </div></Reveal></section>
@@ -87,6 +114,28 @@ export default function Home() {
 
       <section id="contacto"><Reveal><div className="container contact"><div><div className="sectionHead"><h2>¿Quieres recibir promociones?</h2><p>Regístrate para acceder a promociones especiales y novedades.</p></div><button className="btn primary" onClick={() => { window.location.href = '/login'; }}>Crear mi cuenta</button></div><ContactForm/></div></Reveal></section>
     </main>
+
+    {selectedProduct && <div
+      className="productModalBackdrop"
+      role="presentation"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}
+    >
+      <section className="productModal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="productModalClose" aria-label="Cerrar detalles del producto" onClick={() => setSelectedProduct(null)}>×</button>
+        {selectedProduct.image ? <div className="productModalImage"><Image src={selectedProduct.image} alt={selectedProduct.name} fill sizes="(max-width: 760px) 100vw, 760px" priority/></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
+        <div className="productModalBody">
+          <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2><span className="tag">{selectedProduct.category}</span></div>
+          <p className="productModalDescription">{selectedProduct.description}</p>
+          {selectedProduct.availability && <span className="small">{selectedProduct.availability}</span>}
+          <div className="productModalPrice">{selectedProduct.price ? `$${selectedProduct.price}` : 'Consultar'}</div>
+          <div className="productModalActions">
+            <div className="qty"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>+</button></div>
+            <button className="btn primary productModalAdd" onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>Agregar al carrito</button>
+          </div>
+        </div>
+      </section>
+    </div>}
+
     <footer><div className="container"><strong>Club BASA Acapulco</strong><p>Catálogo digital • Pedidos por WhatsApp: 744 588 7237</p><p>© {new Date().getFullYear()} Club BASA. Precios y disponibilidad sujetos a confirmación.</p></div></footer>
   </>;
 }
