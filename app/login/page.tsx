@@ -14,16 +14,18 @@ export default function Login() {
     setSubmitting(true);
 
     try {
+      // Firebase Auth se carga de forma aislada para que un problema de Firestore
+      // no pueda impedir el inicio de sesión.
       const [{ signInWithEmailAndPassword }, { auth }] = await Promise.all([
         import('firebase/auth'),
-        import('@/lib/firebase'),
+        import('@/lib/firebase-auth'),
       ]);
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
       window.location.assign('/admin');
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code || 'unknown';
-      const rawMessage = (err as { message?: string })?.message || '';
+      const code = (err as { code?: string })?.code;
+      const rawMessage = err instanceof Error ? err.message : '';
       const messages: Record<string, string> = {
         'auth/invalid-credential': 'Correo o contraseña incorrectos.',
         'auth/user-not-found': 'No existe una cuenta con ese correo.',
@@ -31,12 +33,9 @@ export default function Login() {
         'auth/invalid-api-key': 'La configuración de Firebase no está disponible en este deployment.',
         'auth/operation-not-allowed': 'El acceso con correo y contraseña no está habilitado en Firebase Authentication.',
         'auth/network-request-failed': 'No se pudo conectar con Firebase. Revisa tu conexión e inténtalo de nuevo.',
-        'auth/too-many-requests': 'Firebase bloqueó temporalmente los intentos. Espera unos minutos antes de volver a intentar.',
-        'auth/invalid-email': 'El formato del correo electrónico no es válido.',
+        'auth/too-many-requests': 'Firebase bloqueó temporalmente los intentos. Espera unos minutos e inténtalo de nuevo.',
       };
-
-      const friendly = messages[code] || `Firebase rechazó el inicio de sesión (${code}).`;
-      setMsg(`${friendly} ${rawMessage && !messages[code] ? rawMessage : ''}`.trim());
+      setMsg(code ? `Firebase rechazó el inicio de sesión (${code}). ${messages[code] || rawMessage}` : `Firebase rechazó el inicio de sesión. ${rawMessage || 'Revisa la configuración y los datos.'}`);
       setSubmitting(false);
     }
   }
