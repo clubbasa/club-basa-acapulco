@@ -72,7 +72,7 @@ export default function Home() {
 
   return <>
     <header className="nav"><div className="container navin">
-      <a className="logo" href="#inicio" aria-label="Club BASA Acapulco"><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
+      <a className="logo" href="/login" aria-label="Acceso administrativo Club BASA" title="Acceso administrativo"><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_header')}>◔ &nbsp;Pedir por WhatsApp</a>
     </div></header>
@@ -120,22 +120,14 @@ export default function Home() {
           <div className="productModalPrice">{selectedProduct.price ? `$${selectedProduct.price}` : 'Consultar'}</div>
 
           {selectedVideo && <div className="productVideoSection">
-            <div className="productVideoHeader"><strong>Video del producto</strong><span>{selectedProduct.videoProvider === 'google-drive' ? 'Google Drive' : selectedProduct.videoProvider === 'vimeo' ? 'Vimeo' : selectedProduct.videoProvider === 'youtube' ? 'YouTube' : selectedProduct.videoProvider === 'hotmart' ? 'Hotmart' : selectedProduct.videoProvider === 'udemy' ? 'Udemy' : 'Video'}</span></div>
-            <div className="productVideoFrame">
-              {selectedVideo.kind === 'video'
-                ? <video controls playsInline preload="metadata" src={selectedVideo.src} />
-                : <iframe src={selectedVideo.src} title={`Video de ${selectedProduct.name}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen />}
-            </div>
+            <div className="productVideoHeader"><strong>Video del producto</strong><span>{selectedProduct.videoProvider === 'google-drive' ? 'Google Drive' : selectedProduct.videoProvider === 'vimeo' ? 'Vimeo' : selectedProduct.videoProvider === 'youtube' ? 'YouTube' : 'Video'}</span></div>
+            <div className="productVideoFrame" dangerouslySetInnerHTML={{ __html: selectedVideo }} />
           </div>}
 
-          <div className="productModalActions">
-            <div className="qty"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>+</button></div>
-            <button className="btn primary productModalAdd" onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>Agregar al carrito</button>
-          </div>
+          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, 1)}>+</button></div>
+          <button className="btn primary productModalAdd" onClick={() => { add(selectedProduct.id, 1); track('add_to_cart_modal', { product: selectedProduct.name }); }}>Agregar al carrito</button>
         </div>
       </section>
     </div>}
-
-    <footer><div className="container"><strong>Club BASA Acapulco</strong><p>Catálogo digital • Pedidos por WhatsApp: 744 588 7237</p><p>© {new Date().getFullYear()} Club BASA. Precios y disponibilidad sujetos a confirmación.</p></div></footer>
   </>;
 }
