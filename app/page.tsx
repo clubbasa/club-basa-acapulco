@@ -70,9 +70,20 @@ export default function Home() {
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`Mira el menú de Club BASA Acapulco: ${siteUrl}`)}`;
   const selectedVideo = selectedProduct ? getProductVideoEmbed(selectedProduct.videoProvider, selectedProduct.videoUrl) : null;
 
+  const handleLogoDoubleClick = () => {
+    track('logo_admin_login');
+    window.location.href = '/login';
+  };
+
   return <>
     <header className="nav"><div className="container navin">
-      <a className="logo" href="/login" aria-label="Acceso administrativo Club BASA" title="Acceso administrativo"><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
+      <a
+        className="logo"
+        href="#inicio"
+        aria-label="Club BASA. Un clic vuelve al inicio. Doble clic abre el acceso administrativo."
+        title="Clic: inicio · Doble clic/tap: acceso administrativo"
+        onDoubleClick={handleLogoDoubleClick}
+      ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_header')}>◔ &nbsp;Pedir por WhatsApp</a>
     </div></header>
@@ -121,11 +132,11 @@ export default function Home() {
 
           {selectedVideo && <div className="productVideoSection">
             <div className="productVideoHeader"><strong>Video del producto</strong><span>{selectedProduct.videoProvider === 'google-drive' ? 'Google Drive' : selectedProduct.videoProvider === 'vimeo' ? 'Vimeo' : selectedProduct.videoProvider === 'youtube' ? 'YouTube' : 'Video'}</span></div>
-            <div className="productVideoFrame" dangerouslySetInnerHTML={{ __html: selectedVideo }} />
+            <div className="productVideoFrame"><iframe src={selectedVideo} title={`Video de ${selectedProduct.name}`} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
           </div>}
 
-          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, 1)}>+</button></div>
-          <button className="btn primary productModalAdd" onClick={() => { add(selectedProduct.id, 1); track('add_to_cart_modal', { product: selectedProduct.name }); }}>Agregar al carrito</button>
+          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>+</button></div>
+          <button className="btn primary productModalAdd" onClick={() => add(selectedProduct.id, 1)}>Agregar al carrito</button>
         </div>
       </section>
     </div>}
