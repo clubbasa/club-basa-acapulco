@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { z } from 'zod';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +54,8 @@ export async function POST(request: Request) {
     }
 
     const idToken = authorization.slice('Bearer '.length).trim();
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
     const decoded = await adminAuth.verifyIdToken(idToken);
     const adminSnap = await adminDb.doc(`admins/${decoded.uid}`).get();
 
