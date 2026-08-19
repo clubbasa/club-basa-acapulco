@@ -4,12 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCategory, saveProduct, seedCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
+import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { productVideoProviders } from '@/lib/video';
 
-const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '' };
+const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -19,12 +20,16 @@ export default function Admin() {
   const [product, setProduct] = useState<CatalogProduct>(blankProduct);
   const [category, setCategory] = useState<CatalogCategory>(blankCategory);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
   const [savingProduct, setSavingProduct] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = async () => {
     const result = await getCatalog();
@@ -48,10 +53,8 @@ export default function Admin() {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
-    };
+  useEffect(() => () => {
+    if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
 
   const categoryNames = useMemo(() => categories.map((item) => item.name), [categories]);
@@ -65,8 +68,11 @@ export default function Admin() {
   const editProduct = (item: CatalogProduct) => {
     setProduct(item);
     setSelectedImage(null);
+    setSelectedVideo(null);
+    setVideoProgress(0);
     setImagePreview(item.image || '');
     if (imageInputRef.current) imageInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
     requestAnimationFrame(() => productEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
 
@@ -74,21 +80,90 @@ export default function Admin() {
     if (!file) return;
     if (!file.type.startsWith('image/')) return setMessage('Selecciona una imagen válida.');
     if (file.size > MAX_IMAGE_SIZE) return setMessage('La imagen no puede superar 15 MB.');
-
     if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
-    setMessage('Imagen de alta calidad seleccionada. Pulsa “Guardar producto” para subirla y reemplazar la anterior.');
+    setMessage('Imagen seleccionada. Pulsa “Guardar producto” para subirla.');
+  };
+
+  const chooseVideo = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('video/')) return setMessage('Selecciona un archivo de video válido.');
+    if (file.size > MAX_VIDEO_SIZE) return setMessage('El video no puede superar 1 GB.');
+    setSelectedVideo(file);
+    setVideoProgress(0);
+    setMessage(`Video seleccionado: ${file.name}. Pulsa “Subir video a R2”.`);
+  };
+
+  const uploadVideoToR2 = async () => {
+    if (!selectedVideo || !product.id || !product.category) return setMessage('Primero selecciona un producto y una categoría.');
+    if (!user) return setMessage('Tu sesión expiró. Vuelve a iniciar sesión.');
+
+    setUploadingVideo(true);
+    setVideoProgress(0);
+    setMessage('Preparando subida segura a Cloudflare R2…');
+
+    try {
+      const token = await user.getIdToken();
+      const categoryRecord = categories.find((item) => item.name === product.category);
+      const response = await fetch('/api/admin/r2-video-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          filename: selectedVideo.name,
+          contentType: selectedVideo.type,
+          size: selectedVideo.size,
+          categorySlug: categoryRecord?.slug || slugifyCatalog(product.category),
+          productId: product.id,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'No se pudo preparar la subida.');
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', payload.uploadUrl);
+        xhr.setRequestHeader('Content-Type', selectedVideo.type);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) setVideoProgress(Math.round((event.loaded / event.total) * 100));
+        };
+        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`R2 respondió ${xhr.status}.`));
+        xhr.onerror = () => reject(new Error('La conexión con Cloudflare R2 falló.'));
+        xhr.send(selectedVideo);
+      });
+
+      const productToSave: CatalogProduct = {
+        ...product,
+        videoProvider: 'mp4',
+        videoUrl: payload.publicUrl,
+        videoPath: payload.key,
+        videoMimeType: selectedVideo.type,
+        videoSize: selectedVideo.size,
+        videoOriginalName: selectedVideo.name,
+        videoStorage: 'r2',
+      };
+      await saveProduct(productToSave);
+      await load();
+      setProduct(productToSave);
+      setSelectedVideo(null);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      setVideoProgress(100);
+      setMessage('✅ Video subido a R2 y producto actualizado correctamente.');
+    } catch (error) {
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'No se pudo subir el video a R2.');
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   const saveProductForm = async () => {
     if (!product.id || !product.name || !product.category) return setMessage('Completa ID, nombre y categoría.');
     setSavingProduct(true);
     setMessage('Guardando producto…');
-
     let uploadedPath = '';
     try {
-      let productToSave = {
+      let productToSave: CatalogProduct = {
         ...product,
         price: Number(product.price),
         sortOrder: Number(product.sortOrder),
@@ -96,23 +171,15 @@ export default function Admin() {
         videoProvider: product.videoUrl?.trim() ? product.videoProvider : undefined,
       };
       const oldImagePath = product.imagePath;
-
       if (selectedImage) {
         const uploaded = await uploadProductImage(product.id, selectedImage);
         uploadedPath = uploaded.imagePath;
         productToSave = { ...productToSave, image: uploaded.image, imagePath: uploaded.imagePath };
       }
-
       await saveProduct(productToSave);
-
       if (selectedImage && oldImagePath && oldImagePath !== productToSave.imagePath) {
-        try {
-          await removeProductImage(oldImagePath);
-        } catch (cleanupError) {
-          console.warn('No se pudo eliminar la imagen anterior:', cleanupError);
-        }
+        try { await removeProductImage(oldImagePath); } catch (cleanupError) { console.warn('No se pudo eliminar la imagen anterior:', cleanupError); }
       }
-
       await load();
       setProduct(productToSave);
       setSelectedImage(null);
@@ -121,25 +188,20 @@ export default function Admin() {
       setMessage(selectedImage ? 'Producto guardado y nueva imagen reemplazada correctamente.' : 'Producto guardado.');
     } catch (error) {
       console.error(error);
-      if (uploadedPath) {
-        try { await removeProductImage(uploadedPath); } catch (cleanupError) { console.warn(cleanupError); }
-      }
-      setMessage('No se pudo guardar. Revisa que Firebase Storage esté habilitado y que tengas permisos de administrador.');
-    } finally {
-      setSavingProduct(false);
-    }
+      if (uploadedPath) { try { await removeProductImage(uploadedPath); } catch (cleanupError) { console.warn(cleanupError); } }
+      setMessage('No se pudo guardar. Revisa permisos de Firebase Storage.');
+    } finally { setSavingProduct(false); }
   };
 
   const newProduct = () => {
-    setProduct(blankProduct);
-    setSelectedImage(null);
-    setImagePreview('');
+    setProduct(blankProduct); setSelectedImage(null); setSelectedVideo(null); setImagePreview(''); setVideoProgress(0);
     if (imageInputRef.current) imageInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const saveCategoryForm = async () => {
     if (!category.id || !category.name) return setMessage('Completa ID y nombre de categoría.');
-    await saveCategory({ ...category, slug: category.slug || category.id, sortOrder: Number(category.sortOrder) });
+    await saveCategory({ ...category, slug: category.slug || slugifyCatalog(category.name), sortOrder: Number(category.sortOrder) });
     await load(); setCategory(blankCategory); setMessage('Categoría guardada.');
   };
 
@@ -150,7 +212,7 @@ export default function Admin() {
   if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><a className="btn secondary" href="/">Volver al catálogo</a></main>;
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
-    <span className="eyebrow">Admin • Firestore + Storage</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
+    <span className="eyebrow">Admin • Firestore + Storage + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
@@ -158,7 +220,7 @@ export default function Admin() {
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}>
       <strong>{item.name}</strong><p>{item.category} · ${item.price}</p>
       {item.image ? <div style={{ width: '100%', aspectRatio: '16 / 9', marginTop: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid #eadfd4', background: '#fff8ef', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={item.image} alt={item.name} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }} /></div> : <div style={{ width: '100%', aspectRatio: '16 / 9', marginTop: 10, borderRadius: 12, border: '1px solid #eadfd4', background: '#fff8ef', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>Sin imagen</div>}
-      <small>{item.videoUrl ? `Video: ${item.videoProvider || 'embed'}` : 'Sin video'}</small><br/><small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div>
+      <small>{item.videoUrl ? `Video: ${item.videoStorage === 'r2' ? 'Cloudflare R2' : item.videoProvider || 'embed'}` : 'Sin video'}</small><br/><small>{item.active ? 'Activo' : 'Inactivo'}</small><div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editProduct(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeProduct(item.id); await load(); }}>Eliminar</button></div>
     </div>)}</div></section>
 
     <section ref={productEditorRef} style={{ padding: '25px 0', scrollMarginTop: 20 }}><div className="card"><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h2>{product.id ? 'Editar producto' : 'Nuevo producto'}</h2>{product.id && <button type="button" className="btn secondary" onClick={newProduct}>Nuevo producto</button>}</div><div className="grid3">
@@ -170,31 +232,27 @@ export default function Admin() {
       <div className="field"><label>Orden</label><input type="number" value={product.sortOrder} onChange={(e) => setProduct({ ...product, sortOrder: Number(e.target.value) })} /></div>
     </div><div className="field"><label>Descripción</label><textarea value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} rows={3}/></div>
 
-    <div className="field" style={{ marginTop: 18 }}><label>Imagen del producto</label>
-      <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-        {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 220, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'contain', background: '#fff8ef', borderRadius: 12, border: '1px solid #ddd' }} />}
-        <div>
-          <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} />
-          <button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button>
-          <p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP, AVIF, HEIC/HEIF. Máximo 15 MB. Se conserva la resolución y calidad original.</p>
-          {selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}
-        </div>
-      </div>
-    </div>
+    <div className="field" style={{ marginTop: 18 }}><label>Imagen del producto</label><div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+      {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 220, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'contain', background: '#fff8ef', borderRadius: 12, border: '1px solid #ddd' }} />}
+      <div><input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} /><button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button><p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP, AVIF, HEIC/HEIF. Máximo 15 MB.</p>{selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}</div>
+    </div></div>
 
     <div className="field" style={{ marginTop: 24 }}><label>Video del producto</label>
-      <div className="grid3">
-        <div className="field"><label>Fuente</label><select value={product.videoProvider || ''} onChange={(e) => setProduct({ ...product, videoProvider: (e.target.value || undefined) as CatalogProduct['videoProvider'] })}><option value="">Sin video</option>{productVideoProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></div>
-        <div className="field" style={{ gridColumn: 'span 2' }}><label>URL del video</label><input value={product.videoUrl || ''} onChange={(e) => setProduct({ ...product, videoUrl: e.target.value })} placeholder="https://..." /></div>
+      <div className="card" style={{ marginTop: 10, background: '#fffaf5' }}><strong>☁️ Cloudflare R2</strong><p style={{ margin: '8px 0' }}>Sube el MP4 directamente desde esta aplicación. Se guardará automáticamente dentro de la categoría y producto.</p>
+        <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/*" onChange={(e) => chooseVideo(e.target.files?.[0])} style={{ display: 'none' }} />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}><button type="button" className="btn secondary" onClick={() => videoInputRef.current?.click()} disabled={uploadingVideo}>Seleccionar video</button><button type="button" className="btn primary" onClick={uploadVideoToR2} disabled={!selectedVideo || uploadingVideo}>{uploadingVideo ? `Subiendo ${videoProgress}%…` : 'Subir video a R2'}</button></div>
+        {selectedVideo && <p style={{ margin: '10px 0 0', fontSize: 14 }}><strong>{selectedVideo.name}</strong> · {(selectedVideo.size / 1024 / 1024).toFixed(1)} MB</p>}
+        {uploadingVideo && <div style={{ marginTop: 10, height: 8, borderRadius: 99, background: '#eadfd4', overflow: 'hidden' }}><div style={{ width: `${videoProgress}%`, height: '100%', background: '#f58212', transition: 'width .15s' }} /></div>}
+        {product.videoStorage === 'r2' && product.videoUrl && <div style={{ marginTop: 12 }}><small>Video actual en R2:</small><br/><a href={product.videoUrl} target="_blank" rel="noreferrer">{product.videoPath || product.videoUrl}</a></div>}
+        <small style={{ display: 'block', marginTop: 8, color: '#6b7280' }}>Máximo 1 GB. La carga usa una URL temporal para que el archivo vaya directamente al bucket sin pasar por Vercel.</small>
       </div>
-      {product.videoProvider && <p style={{ margin: '4px 0 0', fontSize: 14, color: '#6b7280' }}>{productVideoProviders.find((item) => item.value === product.videoProvider)?.hint}</p>}
-      <div className="card" style={{ marginTop: 12, background: '#fffaf5' }}><strong>Fuentes aceptadas</strong><p style={{ marginBottom: 8 }}>YouTube · Google Drive · Vimeo · Hotmart · Udemy · MP4 · HLS (.m3u8) · Otro / iframe.</p><small>La reproducción depende de que la plataforma permita incrustar el video. Una URL privada o protegida no se puede convertir mágicamente en un reproductor público.</small></div>
+
+      <div className="card" style={{ marginTop: 12, background: '#fffaf5' }}><strong>Fuentes externas</strong><p style={{ marginBottom: 8 }}>YouTube · Google Drive · Vimeo · Hotmart · Udemy · MP4 · HLS (.m3u8) · Otro / iframe.</p><div className="grid3"><div className="field"><label>Fuente</label><select value={product.videoStorage === 'r2' ? 'r2' : product.videoProvider || ''} onChange={(e) => { const value = e.target.value; setProduct({ ...product, videoStorage: value === 'r2' ? 'r2' : 'external', videoProvider: value === 'r2' ? 'mp4' : (value || undefined) as CatalogProduct['videoProvider'] }); }}><option value="">Sin video externo</option><option value="r2">Cloudflare R2</option>{productVideoProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></div><div className="field" style={{ gridColumn: 'span 2' }}><label>URL del video</label><input value={product.videoUrl || ''} onChange={(e) => setProduct({ ...product, videoUrl: e.target.value, videoStorage: 'external' })} placeholder="https://..." /></div></div></div>
     </div>
 
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 18 }}><button type="button" className="btn primary" onClick={saveProductForm} disabled={savingProduct}>{savingProduct ? 'Guardando…' : 'Guardar producto'}</button>{selectedImage && <button type="button" className="btn secondary" onClick={resetImageSelection} disabled={savingProduct}>Cancelar imagen</button>}</div></div></section>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 18 }}><button type="button" className="btn primary" onClick={saveProductForm} disabled={savingProduct || uploadingVideo}>{savingProduct ? 'Guardando…' : 'Guardar producto'}</button>{selectedImage && <button type="button" className="btn secondary" onClick={resetImageSelection} disabled={savingProduct}>Cancelar imagen</button>}</div></div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Categorías</h2><p>{categories.length} categorías en Firestore.</p></div><div className="grid3">{categories.map((item) => <div className="card" key={item.id}><strong>{item.name}</strong><p>{item.slug}</p><div style={{ display: 'flex', gap: 8 }}><button type="button" className="btn secondary" onClick={() => setCategory(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeCategory(item.id); await load(); }}>Eliminar</button></div></div>)}</div><div className="card" style={{ marginTop: 18 }}><h3>{category.id ? 'Editar categoría' : 'Nueva categoría'}</h3><div className="grid3"><div className="field"><label>ID</label><input value={category.id} onChange={(e) => setCategory({ ...category, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })}/></div><div className="field"><label>Nombre</label><input value={category.name} onChange={(e) => setCategory({ ...category, name: e.target.value })}/></div><div className="field"><label>Orden</label><input type="number" value={category.sortOrder} onChange={(e) => setCategory({ ...category, sortOrder: Number(e.target.value) })}/></div></div><button type="button" className="btn primary" onClick={saveCategoryForm}>Guardar categoría</button></div></section>
-
     <p><a href="/">← Volver al catálogo</a></p>
   </main>;
 }
