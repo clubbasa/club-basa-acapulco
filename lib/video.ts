@@ -6,6 +6,7 @@ export type ProductVideoProvider =
   | 'udemy'
   | 'mp4'
   | 'hls'
+  | 'cloudflare-r2'
   | 'embed';
 
 export const productVideoProviders: Array<{ value: ProductVideoProvider; label: string; hint: string }> = [
@@ -16,8 +17,11 @@ export const productVideoProviders: Array<{ value: ProductVideoProvider; label: 
   { value: 'udemy', label: 'Udemy', hint: 'Usa una URL de reproductor/embed si está disponible.' },
   { value: 'mp4', label: 'MP4 / video directo', hint: 'URL directa a un archivo .mp4.' },
   { value: 'hls', label: 'HLS (.m3u8)', hint: 'URL de un stream HLS; depende del soporte del navegador.' },
+  { value: 'cloudflare-r2', label: 'Cloudflare R2', hint: 'Escribe la ruta del objeto, por ejemplo: productos/malteadas/fresona.mp4, o pega la URL completa de media.club-basa.com.' },
   { value: 'embed', label: 'Otro / iframe', hint: 'URL de un reproductor que permita incrustación.' },
 ];
+
+const CLOUDFLARE_R2_BASE_URL = 'https://media.club-basa.com/';
 
 function getYouTubeId(value: string) {
   try {
@@ -43,6 +47,15 @@ function getGoogleDriveId(value: string) {
   return match?.[1] || null;
 }
 
+function getCloudflareR2Url(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'http:' || url.protocol === 'https:') return url.toString();
+  } catch { /* treat the value as an object path */ }
+
+  return new URL(value.replace(/^\/+/, ''), CLOUDFLARE_R2_BASE_URL).toString();
+}
+
 export function getProductVideoEmbed(provider: ProductVideoProvider | undefined, value: string | undefined) {
   if (!provider || !value?.trim()) return null;
   const url = value.trim();
@@ -62,6 +75,7 @@ export function getProductVideoEmbed(provider: ProductVideoProvider | undefined,
     return id ? { kind: 'iframe' as const, src: `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview` } : null;
   }
 
+  if (provider === 'cloudflare-r2') return { kind: 'video' as const, src: getCloudflareR2Url(url) };
   if (provider === 'mp4') return { kind: 'video' as const, src: url };
   if (provider === 'hls') return { kind: 'video' as const, src: url };
 
