@@ -19,7 +19,10 @@ function getFirebaseAdminApp() {
   });
 }
 
-const app = getFirebaseAdminApp();
+export function getAdminAuth() {
+  return getAuth(getFirebaseAdminApp());
+}
 
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export function getAdminDb() {
+  return getFirestore(getFirebaseAdminApp());
+}
