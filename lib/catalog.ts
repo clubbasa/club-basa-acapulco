@@ -1,6 +1,6 @@
+import { getAuth } from 'firebase/auth';
 import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { products as fallbackProducts, type Product } from '@/lib/menu';
 import type { ProductVideoProvider } from '@/lib/video';
 
@@ -9,6 +9,7 @@ export type CatalogCategory = { id: string; name: string; slug: string; active: 
 export type CatalogProduct = Product & {
   active: boolean;
   image?: string;
+  /** @deprecated Kept only for backwards compatibility with older catalog documents. */
   imagePath?: string;
   videoProvider?: ProductVideoProvider;
   videoUrl?: string;
@@ -38,22 +39,58 @@ export async function getCatalog() {
 export function getFallbackProducts(): CatalogProduct[] { return fallbackProducts.map((product, index) => ({ ...product, active: true, sortOrder: index })); }
 export function getFallbackCategories(): CatalogCategory[] { return Array.from(new Set(fallbackProducts.map((p) => p.category))).map((name, index) => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), active: true, sortOrder: index })); }
 
-export async function saveProduct(product: CatalogProduct) { await setDoc(doc(productsRef, product.id), { ...product, updatedAt: serverTimestamp() }, { merge: true }); }
+export async function saveProduct(product: CatalogProduct) {
+  // Firestore stores catalog metadata only. Binary media lives in R2.
+  const { imagePath: _legacyImagePath, ...catalogData } = product;
+  await setDoc(doc(productsRef, product.id), { ...catalogData, updatedAt: serverTimestamp() }, { merge: true });
+}
 
 export function slugifyCatalog(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sin-categoria';
 }
 
-export async function uploadProductImage(productId: string, file: File) {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-  const imagePath = `products/${productId}/${Date.now()}-${safeName}`;
-  const imageRef = ref(storage, imagePath);
-  const snapshot = await uploadBytes(imageRef, file, { contentType: file.type, cacheControl: 'public,max-age=31536000' });
-  const image = await getDownloadURL(snapshot.ref);
-  return { image, imagePath };
+function safeFilename(value: string) {
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalized.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').slice(0, 140) || 'imagen';
 }
 
-export async function removeProductImage(imagePath?: string) { if (!imagePath) return; await deleteObject(ref(storage, imagePath)); }
+export async function uploadProductImage(productId: string, file: File) {
+  const currentUser = getAuth().currentUser || auth.currentUser;
+  if (!currentUser) throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
+
+  const token = await currentUser.getIdToken();
+  const response = await fetch('/api/admin/r2-image-upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      filename: safeFilename(file.name),
+      contentType: file.type,
+      size: file.size,
+      productId,
+    }),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || 'No se pudo preparar la subida de la imagen.');
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', payload.uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`R2 respondió ${xhr.status}.`));
+    xhr.onerror = () => reject(new Error('La conexión con Cloudflare R2 falló.'));
+    xhr.send(file);
+  });
+
+  return { image: payload.publicUrl as string, imagePath: payload.key as string };
+}
+
+/**
+ * Kept as a compatibility helper for the existing admin page.
+ * New image paths are not persisted in Firestore; cleanup is intentionally
+ * best-effort and handled by R2 lifecycle/manual cleanup if needed.
+ */
+export async function removeProductImage(_imagePath?: string) { return; }
+
 export async function removeProduct(id: string) { await deleteDoc(doc(productsRef, id)); }
 export async function saveCategory(category: CatalogCategory) { await setDoc(doc(categoriesRef, category.id), { ...category, updatedAt: serverTimestamp() }, { merge: true }); }
 export async function removeCategory(id: string) { await deleteDoc(doc(categoriesRef, id)); }
