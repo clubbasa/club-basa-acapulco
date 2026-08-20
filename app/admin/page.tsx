@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
+import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { productVideoProviders } from '@/lib/video';
 
 const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
@@ -83,7 +83,7 @@ export default function Admin() {
     if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
-    setMessage('Imagen seleccionada. Pulsa “Guardar producto” para subirla.');
+    setMessage('Imagen seleccionada. Pulsa “Guardar producto” para subirla a Cloudflare R2.');
   };
 
   const chooseVideo = (file?: File) => {
@@ -161,7 +161,6 @@ export default function Admin() {
     if (!product.id || !product.name || !product.category) return setMessage('Completa ID, nombre y categoría.');
     setSavingProduct(true);
     setMessage('Guardando producto…');
-    let uploadedPath = '';
     try {
       let productToSave: CatalogProduct = {
         ...product,
@@ -170,26 +169,20 @@ export default function Admin() {
         videoUrl: product.videoUrl?.trim() || '',
         videoProvider: product.videoUrl?.trim() ? product.videoProvider : undefined,
       };
-      const oldImagePath = product.imagePath;
       if (selectedImage) {
         const uploaded = await uploadProductImage(product.id, selectedImage);
-        uploadedPath = uploaded.imagePath;
-        productToSave = { ...productToSave, image: uploaded.image, imagePath: uploaded.imagePath };
+        productToSave = { ...productToSave, image: uploaded.image };
       }
       await saveProduct(productToSave);
-      if (selectedImage && oldImagePath && oldImagePath !== productToSave.imagePath) {
-        try { await removeProductImage(oldImagePath); } catch (cleanupError) { console.warn('No se pudo eliminar la imagen anterior:', cleanupError); }
-      }
       await load();
       setProduct(productToSave);
       setSelectedImage(null);
       setImagePreview(productToSave.image || '');
       if (imageInputRef.current) imageInputRef.current.value = '';
-      setMessage(selectedImage ? 'Producto guardado y nueva imagen reemplazada correctamente.' : 'Producto guardado.');
+      setMessage(selectedImage ? '✅ Producto guardado y nueva imagen subida a Cloudflare R2 correctamente.' : 'Producto guardado.');
     } catch (error) {
       console.error(error);
-      if (uploadedPath) { try { await removeProductImage(uploadedPath); } catch (cleanupError) { console.warn(cleanupError); } }
-      setMessage('No se pudo guardar. Revisa permisos de Firebase Storage.');
+      setMessage(error instanceof Error ? error.message : 'No se pudo guardar el producto o subir la imagen a Cloudflare R2.');
     } finally { setSavingProduct(false); }
   };
 
@@ -212,7 +205,7 @@ export default function Admin() {
   if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><a className="btn secondary" href="/">Volver al catálogo</a></main>;
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
-    <span className="eyebrow">Admin • Firestore + Storage + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
+    <span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
@@ -234,7 +227,7 @@ export default function Admin() {
 
     <div className="field" style={{ marginTop: 18 }}><label>Imagen del producto</label><div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
       {imagePreview && <img src={imagePreview} alt="Vista previa" style={{ width: 220, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'contain', background: '#fff8ef', borderRadius: 12, border: '1px solid #ddd' }} />}
-      <div><input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} /><button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button><p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP, AVIF, HEIC/HEIF. Máximo 15 MB.</p>{selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}</div>
+      <div><input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => chooseImage(e.target.files?.[0])} style={{ display: 'none' }} /><button type="button" className="btn secondary" onClick={() => imageInputRef.current?.click()}>Cargar imagen</button><p style={{ margin: '8px 0 0', fontSize: 14, color: '#6b7280' }}>JPG, PNG, WEBP, AVIF, HEIC/HEIF. Máximo 15 MB. Se almacena en Cloudflare R2.</p>{selectedImage && <small>Seleccionada: {selectedImage.name} · {(selectedImage.size / 1024 / 1024).toFixed(1)} MB</small>}</div>
     </div></div>
 
     <div className="field" style={{ marginTop: 24 }}><label>Video del producto</label>
