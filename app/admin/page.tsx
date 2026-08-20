@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getCountFromServer, getDoc, query, where } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { productVideoProviders } from '@/lib/video';
 
-const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
+const AREA_LABELS: Record<string, string> = { menu: 'Menú', beneficios: 'Beneficios', envios: 'Envíos', testimonios: 'Testimonios', compartir: 'Compartir', faq: 'FAQ', contacto: 'Contacto' };
+const PAGE_LABELS: Record<string, string> = { '/': 'Inicio', '/blog': 'Blog', '/blog/panquecitos-acapulco': 'Blog · Panquecitos', '/blog/menu-club-basa': 'Blog · Menú', '/blog/envios-acapulco': 'Blog · Envíos' };
+type VisitStats = { totalViews: number; areas: { key: string; label: string; count: number }[]; pages: { key: string; label: string; count: number }[] };
+
+const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
@@ -27,6 +31,8 @@ export default function Admin() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -37,6 +43,29 @@ export default function Admin() {
     setCategories(result.categories);
   };
 
+  const loadVisitStats = async () => {
+    setLoadingStats(true);
+    try {
+      const analyticsRef = collection(db, 'analytics');
+      const [totalSnap, areaSnaps, pageSnaps] = await Promise.all([
+        getCountFromServer(query(analyticsRef, where('type', '==', 'page_view'))),
+        Promise.all(Object.keys(AREA_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('key', '==', `area:${key}`))))),
+        Promise.all(Object.keys(PAGE_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('key', '==', `page:${key}`))))),
+      ]);
+      const areas = Object.keys(AREA_LABELS)
+        .map((key, i) => ({ key, label: AREA_LABELS[key], count: areaSnaps[i].data().count }))
+        .sort((a, b) => b.count - a.count);
+      const pages = Object.keys(PAGE_LABELS)
+        .map((key, i) => ({ key, label: PAGE_LABELS[key], count: pageSnaps[i].data().count }))
+        .sort((a, b) => b.count - a.count);
+      setVisitStats({ totalViews: totalSnap.data().count, areas, pages });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -44,7 +73,7 @@ export default function Admin() {
       try {
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         setIsAdmin(adminDoc.exists() && adminDoc.data()?.enabled === true);
-        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await load();
+        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats()]);
       } catch (error) {
         console.error(error);
         setIsAdmin(false);
@@ -207,6 +236,18 @@ export default function Admin() {
   return <main className="container" style={{ padding: '50px 0 90px' }}>
     <span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
+
+    <section style={{ padding: '25px 0' }}><div className="card">
+      <h2>Visitas del sitio</h2>
+      <p style={{ color: '#6b7280', margin: '4px 0 14px' }}>Conteo interno de visitas por página y sección. No incluye direcciones IP ni datos de inicio de sesión.</p>
+      {loadingStats ? <p>Cargando estadísticas…</p> : visitStats ? <>
+        <p><strong>{visitStats.totalViews}</strong> visitas totales registradas.</p>
+        <div className="grid3" style={{ marginTop: 14 }}>
+          <div><h3 style={{ fontSize: 16 }}>Áreas más visitadas</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.areas.map((a) => <li key={a.key}>{a.label}: {a.count}</li>)}</ul></div>
+          <div><h3 style={{ fontSize: 16 }}>Páginas más visitadas</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.pages.map((p) => <li key={p.key}>{p.label}: {p.count}</li>)}</ul></div>
+        </div>
+      </> : <p>Sin datos todavía.</p>}
+    </div></section>
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
 

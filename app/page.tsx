@@ -10,7 +10,7 @@ import Reveal from '@/components/Reveal';
 import ContactForm from '@/components/ContactForm';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
-const siteUrl = 'https://club-basa-acapulco.vercel.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
 
 export default function Home() {
   const [products, setProducts] = useState<CatalogProduct[]>(getFallbackProducts());
@@ -52,9 +52,25 @@ export default function Home() {
     };
   }, [selectedProduct]);
 
-  const visibleProducts = useMemo(() => activeCategory === 'Todos'
-    ? products.filter((p) => p.id !== 'coffee')
-    : products.filter((p) => p.category === activeCategory && p.id !== 'coffee'), [products, activeCategory]);
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('main > section[id]'));
+    if (!sections.length) return;
+    const seen = new Set<string>();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting || seen.has(entry.target.id)) return;
+        seen.add(entry.target.id);
+        track('section_view', { area: entry.target.id });
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.3 });
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  const visibleProducts = useMemo(() => products
+    .filter((p) => p.id !== 'coffee')
+    .filter((p) => activeCategory === 'Todos' || p.category === activeCategory), [products, activeCategory]);
   const items = useMemo(() => Object.entries(cart).map(([id, qty]) => ({ id, qty })).filter((x) => x.qty > 0), [cart]);
   const total = items.reduce((sum, item) => sum + (products.find((p) => p.id === item.id)?.price || 0) * item.qty, 0);
   const add = (id: string, delta: number) => setCart((current) => ({ ...current, [id]: Math.max(0, (current[id] || 0) + delta) }));
@@ -111,9 +127,9 @@ export default function Home() {
 
       <section id="envios"><Reveal><div className="container"><div className="sectionHead"><h2>Envío a domicilio en Acapulco</h2><p>El reparto lo realiza un servicio externo a Club BASA. Para cotizar con precisión, necesitamos tu ubicación de Google Maps o WhatsApp.</p></div><div className="grid3"><div className="card"><h3>$60 aprox.</h3><p>Zona cercana a La Garita, incluyendo referencias como VIPS de La Diana, Costera 125, Roble, Anclas y Laja.</p></div><div className="card"><h3>$80 aprox.</h3><p>Progreso, zona Centro, Zócalo, Costa Azul y zonas dentro de ese rango.</p></div><div className="card"><h3>¿Fuera de zona?</h3><p>Envíanos tu ubicación. El repartidor cotiza el costo antes de confirmar.</p><a className="btn primary" href={waLink('Hola Club BASA, quiero cotizar mi envío. Les comparto mi ubicación.')}>Cotizar envío</a></div></div></div></Reveal></section>
 
-      <section><Reveal><div className="container"><div className="sectionHead"><h2>Lo que dicen nuestros clientes</h2><p>Testimonios preparados para sustituir con opiniones reales verificadas.</p></div><div className="testimonials"><div className="card"><div className="stars">★★★★★</div><p className="quote">“Me gustó que pude pedir el six por WhatsApp sin complicarme.”</p><small>Cliente Club BASA · Acapulco</small></div><div className="card"><div className="stars">★★★★★</div><p className="quote">“El catálogo me ayudó a elegir antes de mandar mi pedido.”</p><small>Cliente Club BASA · Acapulco</small></div><div className="card"><div className="stars">★★★★★</div><p className="quote">“Pedí sobre pedido y la experiencia fue muy sencilla.”</p><small>Cliente Club BASA · Acapulco</small></div></div></div></Reveal></section>
+      <section id="testimonios"><Reveal><div className="container"><div className="sectionHead"><h2>Lo que dicen nuestros clientes</h2><p>Testimonios preparados para sustituir con opiniones reales verificadas.</p></div><div className="testimonials"><div className="card"><div className="stars">★★★★★</div><p className="quote">“Me gustó que pude pedir el six por WhatsApp sin complicarme.”</p><small>Cliente Club BASA · Acapulco</small></div><div className="card"><div className="stars">★★★★★</div><p className="quote">“El catálogo me ayudó a elegir antes de mandar mi pedido.”</p><small>Cliente Club BASA · Acapulco</small></div><div className="card"><div className="stars">★★★★★</div><p className="quote">“Pedí sobre pedido y la experiencia fue muy sencilla.”</p><small>Cliente Club BASA · Acapulco</small></div></div></div></Reveal></section>
 
-      <section><Reveal><div className="container"><div className="sectionHead"><h2>Comparte Club BASA</h2><p>Envíale la página a quien siempre pregunta “¿dónde compraste eso?”</p></div><div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a></div></div></Reveal></section>
+      <section id="compartir"><Reveal><div className="container"><div className="sectionHead"><h2>Comparte Club BASA</h2><p>Envíale la página a quien siempre pregunta “¿dónde compraste eso?”</p></div><div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a></div></div></Reveal></section>
 
       <section id="faq"><Reveal><div className="container"><div className="sectionHead"><h2>Preguntas frecuentes</h2></div><div className="faq"><details><summary>¿Cuánto cuesta el six?</summary><p>El six cuesta $150 e incluye recipiente y papel grado alimenticio.</p></details><details><summary>¿Qué recibo en mi primera compra?</summary><p>En la primera compra del six recibes un café de grano arábica.</p></details><details><summary>¿Puedo comprar una sola pieza?</summary><p>Sí, la pieza individual cuesta $25, sujeta a disponibilidad de 8:00 a 11:00 h.</p></details><details><summary>¿Tienen envío?</summary><p>Sí. El reparto es externo a Club BASA. Se cotiza con tu ubicación.</p></details><details><summary>¿Puedo pedir sobre pedido?</summary><p>Sí, de hecho es lo recomendado para asegurar disponibilidad.</p></details></div></div></Reveal></section>
 

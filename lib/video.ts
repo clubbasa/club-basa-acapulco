@@ -8,15 +8,15 @@ export type ProductVideoProvider =
   | 'hls'
   | 'embed';
 
-export const productVideoProviders: Array<{ value: ProductVideoProvider; label: string; hint: string }> = [
-  { value: 'youtube', label: 'YouTube', hint: 'Pega la URL del video o del enlace compartido.' },
-  { value: 'google-drive', label: 'Google Drive', hint: 'Usa un archivo de video compartido con acceso de visualización.' },
-  { value: 'vimeo', label: 'Vimeo', hint: 'Pega la URL pública o privada apta para reproducción en tu dominio.' },
-  { value: 'hotmart', label: 'Hotmart', hint: 'Usa una URL de reproductor/embed si tu plan permite incrustación.' },
-  { value: 'udemy', label: 'Udemy', hint: 'Usa una URL de reproductor/embed si está disponible.' },
-  { value: 'mp4', label: 'MP4 / video directo', hint: 'URL directa a un archivo .mp4.' },
-  { value: 'hls', label: 'HLS (.m3u8)', hint: 'URL de un stream HLS; depende del soporte del navegador.' },
-  { value: 'embed', label: 'Otro / iframe', hint: 'URL de un reproductor que permita incrustación.' },
+export const productVideoProviders: Array<{ value: ProductVideoProvider; label: string }> = [
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'google-drive', label: 'Google Drive' },
+  { value: 'vimeo', label: 'Vimeo' },
+  { value: 'hotmart', label: 'Hotmart' },
+  { value: 'udemy', label: 'Udemy' },
+  { value: 'mp4', label: 'MP4 / video directo' },
+  { value: 'hls', label: 'HLS (.m3u8)' },
+  { value: 'embed', label: 'Otro / iframe' },
 ];
 
 function getYouTubeId(value: string) {
