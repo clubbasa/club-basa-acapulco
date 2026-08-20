@@ -12,4 +12,8 @@
 .productModalActions:after{content:'cantidad';position:absolute;display:none}
 .productModalAdd{width:calc(52% - 16px);min-height:78px;margin-top:-78px;margin-left:calc(48% + 16px);border-radius:22px!important;font-size:20px;box-shadow:0 12px 26px rgba(245,130,11,.22)}
 .productModalAdd:hover{transform:translateY(-2px);box-shadow:0 16px 32px rgba(245,130,11,.28)}
-@media(max-width:560px){.productModalActions{width:100%;min-height:74px;margin-top:20px;padding:9px 12px;border-radius:22px}.productModalActions button{flex-basis:48px;width:48px;height:48px;font-size:28px}.productModalActions span{font-size:34px}.productModalAdd{width:100%;min-height:58px;margin:12px 0 0;border-radius:18px!important;font-size:18px}}
+@media(max-width:560px){.productModalActions{width:100%;min-height:74px;margin-top:20px;padding:9px 12px;border-radius:22px;flex-direction:row;align-items:center;justify-content:space-between}.productModalActions button{flex:0 0 48px;width:48px;height:48px;font-size:28px}.productModalActions span{font-size:34px}.productModalAdd{width:100%;min-height:58px;margin:12px 0 0;border-radius:18px!important;font-size:18px}}
+
+/* Mantener el selector de cantidad siempre horizontal, especialmente en móviles */
+.productModalActions{flex-direction:row!important;align-items:center!important;justify-content:space-between!important}
+@media(max-width:560px){.productModalActions{flex-direction:row!important;width:100%;gap:8px}.productModalActions button{flex:0 0 48px}.productModalActions span{flex:1;text-align:center}}
