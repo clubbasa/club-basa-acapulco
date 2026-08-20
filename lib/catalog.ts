@@ -41,7 +41,13 @@ export function getFallbackCategories(): CatalogCategory[] { return Array.from(n
 
 export async function saveProduct(product: CatalogProduct) {
   // Firestore stores catalog metadata only. Binary media lives in R2.
-  const { imagePath: _legacyImagePath, ...catalogData } = product;
+  // Firestore rejects explicit `undefined` values, while optional video fields
+  // are intentionally absent for products that do not have a video yet.
+  const { imagePath: _legacyImagePath, ...productWithoutLegacyImagePath } = product;
+  const catalogData = Object.fromEntries(
+    Object.entries(productWithoutLegacyImagePath).filter(([, value]) => value !== undefined),
+  );
+
   await setDoc(
     doc(productsRef, product.id),
     { ...catalogData, imagePath: deleteField(), updatedAt: serverTimestamp() },
