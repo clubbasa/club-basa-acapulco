@@ -135,7 +135,7 @@ export default function Home() {
             <div className="productVideoFrame">
               {selectedVideo.kind === 'iframe'
                 ? <iframe src={selectedVideo.src} title={`Video de ${selectedProduct.name}`} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
-                : <video src={selectedVideo.src} controls playsInline preload="metadata" />}
+                              : <video src={selectedVideo.src} controls playsInline preload="metadata" controlsList={selectedProduct.videoDownloadable === false ? 'nodownload' : undefined} onContextMenu={selectedProduct.videoDownloadable === false ? (event) => event.preventDefault() : undefined} />}
             </div>
           </div>}
 
