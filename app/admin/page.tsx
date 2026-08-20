@@ -7,7 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, removeProductImage, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { productVideoProviders } from '@/lib/video';
 
-const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined };
+const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, featured: false, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
@@ -245,6 +245,7 @@ export default function Admin() {
         {uploadingVideo && <div style={{ marginTop: 10, height: 8, borderRadius: 99, background: '#eadfd4', overflow: 'hidden' }}><div style={{ width: `${videoProgress}%`, height: '100%', background: '#f58212', transition: 'width .15s' }} /></div>}
         {product.videoStorage === 'r2' && product.videoUrl && <div style={{ marginTop: 12 }}><small>Video actual en R2:</small><br/><a href={product.videoUrl} target="_blank" rel="noreferrer">{product.videoPath || product.videoUrl}</a></div>}
         <small style={{ display: 'block', marginTop: 8, color: '#6b7280' }}>Máximo 1 GB. La carga usa una URL temporal para que el archivo vaya directamente al bucket sin pasar por Vercel.</small>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14, fontSize: 14, cursor: 'pointer' }}><input type="checkbox" checked={product.videoDownloadable !== false} onChange={(e) => setProduct({ ...product, videoDownloadable: e.target.checked })} /> Permitir que los clientes descarguen este video</label>
       </div>
 
       <div className="card" style={{ marginTop: 12, background: '#fffaf5' }}><strong>Fuentes externas</strong><p style={{ marginBottom: 8 }}>YouTube · Google Drive · Vimeo · Hotmart · Udemy · MP4 · HLS (.m3u8) · Otro / iframe.</p><div className="grid3"><div className="field"><label>Fuente</label><select value={product.videoStorage === 'r2' ? 'r2' : product.videoProvider || ''} onChange={(e) => { const value = e.target.value; setProduct({ ...product, videoStorage: value === 'r2' ? 'r2' : 'external', videoProvider: value === 'r2' ? 'mp4' : (value || undefined) as CatalogProduct['videoProvider'] }); }}><option value="">Sin video externo</option><option value="r2">Cloudflare R2</option>{productVideoProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></div><div className="field" style={{ gridColumn: 'span 2' }}><label>URL del video</label><input value={product.videoUrl || ''} onChange={(e) => setProduct({ ...product, videoUrl: e.target.value, videoStorage: 'external' })} placeholder="https://..." /></div></div></div>
