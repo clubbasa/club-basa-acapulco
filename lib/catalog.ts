@@ -17,6 +17,7 @@ export type CatalogProduct = Product & {
   videoSize?: number;
   videoOriginalName?: string;
   videoStorage?: 'r2' | 'external';
+  videoDownloadable?: boolean;
   sortOrder: number;
   updatedAt?: unknown;
 };
