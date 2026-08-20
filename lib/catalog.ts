@@ -1,5 +1,5 @@
 import { getAuth } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { products as fallbackProducts, type Product } from '@/lib/menu';
 import type { ProductVideoProvider } from '@/lib/video';
@@ -9,7 +9,7 @@ export type CatalogCategory = { id: string; name: string; slug: string; active: 
 export type CatalogProduct = Product & {
   active: boolean;
   image?: string;
-  /** @deprecated Kept only for backwards compatibility with older catalog documents. */
+  /** @deprecated Legacy field removed from Firestore on the next product save. */
   imagePath?: string;
   videoProvider?: ProductVideoProvider;
   videoUrl?: string;
@@ -42,7 +42,11 @@ export function getFallbackCategories(): CatalogCategory[] { return Array.from(n
 export async function saveProduct(product: CatalogProduct) {
   // Firestore stores catalog metadata only. Binary media lives in R2.
   const { imagePath: _legacyImagePath, ...catalogData } = product;
-  await setDoc(doc(productsRef, product.id), { ...catalogData, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(
+    doc(productsRef, product.id),
+    { ...catalogData, imagePath: deleteField(), updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 export function slugifyCatalog(value: string) {
@@ -84,11 +88,7 @@ export async function uploadProductImage(productId: string, file: File) {
   return { image: payload.publicUrl as string, imagePath: payload.key as string };
 }
 
-/**
- * Kept as a compatibility helper for the existing admin page.
- * New image paths are not persisted in Firestore; cleanup is intentionally
- * best-effort and handled by R2 lifecycle/manual cleanup if needed.
- */
+/** Compatibility helper for the current admin page. R2 objects are not referenced by Firestore. */
 export async function removeProductImage(_imagePath?: string) { return; }
 
 export async function removeProduct(id: string) { await deleteDoc(doc(productsRef, id)); }
