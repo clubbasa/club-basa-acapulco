@@ -19,7 +19,18 @@ function getS3Client() {
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   if (!accountId || !accessKeyId || !secretAccessKey) throw new Error('R2 server credentials are not configured.');
-  return new S3Client({ region: 'auto', endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } });
+
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+    // AWS SDK v3.729+ automatically adds CRC32 checksums to S3 uploads.
+    // For browser uploads through an R2 presigned URL, that produces
+    // checksum query parameters that are not needed here and can cause
+    // the browser/R2 CORS preflight to fail. Only calculate a checksum
+    // when the operation explicitly requires one.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+  });
 }
 
 export async function POST(request: Request) {
@@ -45,7 +56,11 @@ export async function POST(request: Request) {
     const bucket = process.env.R2_BUCKET_NAME || 'club-basa-videos';
     const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || 'https://media.club-basa.com').replace(/\/$/, '');
     const key = `videos/${categorySlug}/${productId}/${crypto.randomUUID()}-${safeFilename(filename)}`;
-    const uploadUrl = await getSignedUrl(getS3Client(), new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }), { expiresIn: 900 });
+    const uploadUrl = await getSignedUrl(
+      getS3Client(),
+      new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }),
+      { expiresIn: 900 },
+    );
 
     return NextResponse.json({ uploadUrl, key, publicUrl: `${publicBaseUrl}/${key}`, expiresIn: 900, contentType, size });
   } catch (error) {
