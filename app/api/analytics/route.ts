@@ -9,11 +9,11 @@ export const runtime = 'nodejs';
 // matched against fixed allow-lists so clients can't create arbitrary
 // counter buckets or write free-form data.
 const ALLOWED_PAGES = new Set(['/', '/blog', '/blog/panquecitos-acapulco', '/blog/menu-club-basa', '/blog/envios-acapulco']);
-const ALLOWED_AREAS = new Set(['hero', 'producto-estrella', 'oferta', 'categorias', 'menu', 'experiencia', 'pedido']);
+const ALLOWED_AREAS = new Set(['hero', 'producto-estrella', 'desayuno', 'categorias', 'menu', 'experiencia', 'pedido']);
 // Landing CTAs — lets the admin see which button converts best (view_product/
 // add_to_cart already exist below and are used by the catalog too).
 const ALLOWED_CTAS = new Set([
-  'header_order', 'hero_order', 'hero_menu', 'six_order', 'offer_order',
+  'header_order', 'hero_order', 'hero_menu', 'six_order', 'breakfast_order',
   'menu_explore', 'final_order', 'final_menu', 'sticky_order',
   'envios_cotizar', 'experiencia_contacto',
 ]);
