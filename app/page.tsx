@@ -24,6 +24,7 @@ export default function Home() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartHydrated, setCartHydrated] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const closedViaBackRef = useRef(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const [showTabsFade, setShowTabsFade] = useState(false);
@@ -88,12 +89,23 @@ export default function Home() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSelectedProduct(null);
     };
+    // Push a history entry so the phone's back button closes the modal
+    // instead of navigating away from the site entirely.
+    const onPopState = () => {
+      closedViaBackRef.current = true;
+      setSelectedProduct(null);
+    };
+    window.history.pushState({ productModal: true }, '');
+    window.addEventListener('popstate', onPopState);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('popstate', onPopState);
+      if (!closedViaBackRef.current) window.history.back();
+      closedViaBackRef.current = false;
     };
   }, [selectedProduct]);
 
