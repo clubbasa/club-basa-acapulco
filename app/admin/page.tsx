@@ -8,7 +8,7 @@ import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, s
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
 
-const AREA_LABELS: Record<string, string> = { menu: 'Menú', beneficios: 'Beneficios', envios: 'Envíos', testimonios: 'Testimonios', compartir: 'Compartir', faq: 'FAQ', contacto: 'Contacto' };
+const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', malteadas: 'Malteadas', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
 const PAGE_LABELS: Record<string, string> = { '/': 'Inicio', '/blog': 'Blog', '/blog/panquecitos-acapulco': 'Blog · Panquecitos', '/blog/menu-club-basa': 'Blog · Menú', '/blog/envios-acapulco': 'Blog · Envíos' };
 type VisitStats = { totalViews: number; areas: { key: string; label: string; count: number }[]; pages: { key: string; label: string; count: number }[] };
 type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean };
