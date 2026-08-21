@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 // or auth/session data is ever stored. Values are matched against fixed
 // allow-lists so clients can't create arbitrary counter buckets.
 const ALLOWED_PAGES = new Set(['/', '/blog', '/blog/panquecitos-acapulco', '/blog/menu-club-basa', '/blog/envios-acapulco']);
-const ALLOWED_AREAS = new Set(['beneficios', 'menu', 'envios', 'testimonios', 'compartir', 'faq', 'contacto']);
+const ALLOWED_AREAS = new Set(['hero', 'producto-estrella', 'malteadas', 'categorias', 'menu', 'experiencia', 'pedido']);
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
