@@ -23,6 +23,7 @@ export default function Home() {
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -41,6 +42,15 @@ export default function Home() {
       });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -106,7 +116,12 @@ export default function Home() {
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_header')}>◔ &nbsp;Pedir por WhatsApp</a>
-    </div></header>
+      <button type="button" className="navToggle" aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? '✕' : '☰'}</button>
+    </div>
+    {mobileMenuOpen && <nav id="mobile-menu" className="mobileMenu" aria-label="Menú móvil" onClick={() => setMobileMenuOpen(false)}>
+      <a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a>
+    </nav>}
+    </header>
 
     <main id="inicio">
       <section className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
