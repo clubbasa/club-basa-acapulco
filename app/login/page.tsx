@@ -22,7 +22,7 @@ export default function Login() {
       ]);
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      window.location.assign('/mi-cuenta');
+      window.location.assign('/admin');
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       const rawMessage = err instanceof Error ? err.message : '';
