@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getCatalog, getFallbackCategories, getFallbackProducts, type CatalogProduct } from '@/lib/catalog';
 import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
@@ -24,6 +24,8 @@ export default function Home() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const categoryTabsRef = useRef<HTMLDivElement>(null);
+  const [showTabsFade, setShowTabsFade] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -42,6 +44,19 @@ export default function Home() {
       });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    const el = categoryTabsRef.current;
+    if (!el) return;
+    const updateFade = () => setShowTabsFade(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+    updateFade();
+    el.addEventListener('scroll', updateFade, { passive: true });
+    window.addEventListener('resize', updateFade);
+    return () => {
+      el.removeEventListener('scroll', updateFade);
+      window.removeEventListener('resize', updateFade);
+    };
+  }, [categories]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -135,7 +150,7 @@ export default function Home() {
       <section id="beneficios"><Reveal><div className="container"><div className="sectionHead"><h2>La oferta está diseñada para que pedir sea fácil.</h2><p>Oferta clara, catálogo rápido y WhatsApp listo para cerrar el pedido.</p></div><div className="grid3"><div className="card"><div className="icon">🧁</div><h3>Six completo</h3><p>$150 con recipiente y papel grado alimenticio.</p></div><div className="card"><div className="icon">☕</div><h3>Regalo de primera compra</h3><p>En tu primer six recibes un café de grano arábica.</p></div><div className="card"><div className="icon">📲</div><h3>Pedido en WhatsApp</h3><p>Selecciona productos, arma tu pedido y envíalo con un toque.</p></div></div></div></Reveal></section>
 
       <section id="menu"><Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
-        <div className="categoryTabs" role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.filter((category) => !isInternalCategory(category.id)).map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
+        <div className="categoryTabsWrap"><div className="categoryTabs" ref={categoryTabsRef} role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.filter((category) => !isInternalCategory(category.id)).map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>{showTabsFade && <div className="categoryTabsFade" aria-hidden="true">›</div>}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div> : <div className="menuImage menuImageEmpty" aria-hidden="true">Sin imagen</div>}
