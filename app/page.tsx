@@ -22,10 +22,26 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const [showTabsFade, setShowTabsFade] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('clubbasa-cart');
+      if (saved) setCart(JSON.parse(saved));
+    } catch { /* localStorage unavailable (private browsing) or corrupt data */ }
+    setCartHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    try {
+      localStorage.setItem('clubbasa-cart', JSON.stringify(cart));
+    } catch { /* localStorage unavailable (private browsing, storage full) */ }
+  }, [cart, cartHydrated]);
 
   useEffect(() => {
     let mounted = true;
