@@ -214,6 +214,8 @@ export default function Home() {
   const specialProduct = products.find((p) => p.id === 'special');
   const waffleProduct = products.find((p) => p.id === 'waffle');
   const crepaProduct = products.find((p) => p.id === 'crepa');
+  const teaProduct = products.find((p) => p.id === 'tea');
+  const aloeProduct = products.find((p) => p.id === 'aloe');
   const menuPosterProduct = products.find((p) => p.id === 'menu');
 
   return <>
@@ -237,13 +239,12 @@ export default function Home() {
     <main id="inicio">
       {/* Escena 1 — Hero: se mantiene la implementación full-bleed original (ya tenía min-height:100vh y fade-in propio), solo se agrega scroll-snap y se reordenan los CTA por prioridad de conversión. */}
       <section id="hero" className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
-        <span className="eyebrow heroEyebrow">Producto estrella • Panquecitos Club BASA</span><h1>Sabor que<br/>enamora.<br/>Nutrición que<br/><em>transforma.</em></h1>
-        <p>Panquecitos altos en proteína, sin harinas ni aceite, hechos con avena y nutrición Herbalife. El snack perfecto para disfrutar.</p>
-        <p className="small" style={{ color: '#fff', opacity: .85 }}>También: malteadas, waffles, crepas y bebidas.</p>
+        <span className="eyebrow heroEyebrow">Club BASA Acapulco</span><h1>Sabor que<br/>enamora.<br/>Nutrición que<br/><em>transforma.</em></h1>
+        <p>Malteadas, panquecitos, crepas, waffles y opciones para disfrutar tu desayuno, con la nutrición Herbalife que ya conoces.</p>
         <div className="actions"><a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'hero_order' })}>◔ &nbsp;Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={() => track('cta_click', { cta: 'hero_menu' })}>Ver menú</a></div>
         <div className="heroTrust"><span>◯ <b>Sin harinas</b><small>ni aceite</small></span><span>◉ <b>Altos en</b><small>proteína</small></span><span>♡ <b>Hechos con</b><small>nutrición Herbalife</small></span></div>
       </div></div>
-      <div className="heroOffer container"><div className="offerItem"><div className="offerIcon">☕</div><div><strong>Primera compra de six</strong><p>Incluye recipiente + papel grado alimenticio<br/>y café de grano arábica de regalo.</p></div></div><div className="offerItem offerPrice"><div className="offerIcon">▣</div><div><strong>Six de panquecitos</strong><b>$150</b></div></div><div className="offerItem"><div className="offerIcon">🛵</div><div><strong>Envío a domicilio</strong><p>Zona cercana $60 • Zona ampliada $80<br/>Fuera de zona: cotización personalizada.</p></div></div></div></section>
+      <div className="heroOffer container"><div className="offerItem"><div className="offerIcon">☕</div><div><strong>Primera compra de six</strong><p>Incluye recipiente + papel grado alimenticio<br/>y café de grano arábica de regalo.</p></div></div><div className="offerItem offerPrice"><div className="offerIcon">▣</div><div><strong>Six de panquecitos</strong><b>{sixProduct?.price ? `$${sixProduct.price}` : 'Consultar'}</b></div></div><div className="offerItem"><div className="offerIcon">🛵</div><div><strong>Envío a domicilio</strong><p>Zona cercana $60 • Zona ampliada $80<br/>Fuera de zona: cotización personalizada.</p></div></div></div></section>
 
       {/* Escena 2 — Producto estrella: Producto → Beneficio → Oferta → CTA */}
       <ScrollScene id="producto-estrella">
@@ -267,19 +268,26 @@ export default function Home() {
         </div>
       </ScrollScene>
 
-      {/* Escena 3 — Oferta / razón para comprar ahora: usa la promoción real de primera compra (misma que ya existe en el hero), no se inventa nada nuevo */}
-      <ScrollScene id="oferta">
-        <div className="container sceneGrid">
-          <div className="sceneMedia" style={{ aspectRatio: '4 / 5' }}>
-            {sixProduct?.image ? <Image src={sixProduct.image} alt="Six de panquecitos con regalo de bienvenida" fill sizes="(max-width: 850px) 100vw, 50vw" /> : <div className="menuImageEmpty" style={{ position: 'absolute', inset: 0 }}>Sin imagen</div>}
+      {/* Escena 3 — Arma tu desayuno: cross-sell de bebidas reales complementarias al six (no repite al six como protagonista). La oferta de bienvenida (café de regalo) se conserva como incentivo secundario, no como segunda venta. */}
+      <ScrollScene id="desayuno">
+        <div className="container">
+          <div className="sectionHead"><h2>Arma tu desayuno</h2><p>Completa tu six con una bebida preparada al momento.</p></div>
+          <div className="grid3">
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Malteada" onClick={() => shakeProduct && openProduct(shakeProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && shakeProduct) { event.preventDefault(); openProduct(shakeProduct); } }}>
+              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              <h3>Malteada</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
+            </div>
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Té" onClick={() => teaProduct && openProduct(teaProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && teaProduct) { event.preventDefault(); openProduct(teaProduct); } }}>
+              {teaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={teaProduct.image} alt="Té Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              <h3>Té</h3><p>{teaProduct?.price ? `$${teaProduct.price}` : 'Consultar'}</p>
+            </div>
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Aloe" onClick={() => aloeProduct && openProduct(aloeProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && aloeProduct) { event.preventDefault(); openProduct(aloeProduct); } }}>
+              {aloeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={aloeProduct.image} alt="Aloe Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              <h3>Aloe</h3><p>{aloeProduct?.price ? `$${aloeProduct.price}` : 'Consultar'}</p>
+            </div>
           </div>
-          <div>
-            <span className="sceneEyebrow">Oferta de bienvenida</span>
-            <h2>En tu primera compra, café de regalo</h2>
-            <p>Six de panquecitos + recipiente y papel grado alimenticio + café de grano arábica, sin costo extra.</p>
-            <div className="scenePrice">{sixProduct?.price ? `$${sixProduct.price}` : 'Consultar'}</div>
-            <button type="button" className="btn primary" style={{ marginTop: 14 }} onClick={() => { track('cta_click', { cta: 'offer_order' }); sixProduct && openProduct(sixProduct); }}>Aprovechar oferta</button>
-          </div>
+          <p className="small" style={{ marginTop: 22, color: 'var(--muted)' }}>Además, en tu primera compra del six te regalamos café de grano arábica.</p>
+          <div style={{ marginTop: 20, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_click', { cta: 'breakfast_order' })}>Armar mi desayuno</a></div>
         </div>
       </ScrollScene>
 
@@ -347,11 +355,11 @@ export default function Home() {
       <ScrollScene id="pedido">
         <div className="container">
           <div className="sectionHead" style={{ textAlign: 'center', margin: '0 auto 30px', maxWidth: 640 }}>
-            <h2>¿Listo para probar Club BASA?</h2>
+            <h2>¿Qué se te antoja hoy?</h2>
             <p>Arma tu pedido y lo confirmamos por WhatsApp en minutos.</p>
           </div>
           <div className="actions" style={{ justifyContent: 'center' }}>
-            <a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'final_order' })}>Pedir por WhatsApp</a>
+            <a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'final_order' })}>◔ &nbsp;Pedir ahora</a>
             <a className="btn secondary" href="#menu" onClick={() => track('cta_click', { cta: 'final_menu' })}>Ver menú</a>
           </div>
 

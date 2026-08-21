@@ -29,6 +29,8 @@ html{scroll-snap-type:y proximity}
 @media(max-width:850px){.sceneGrid{grid-template-columns:1fr;gap:28px}}
 .scenePrice{font-size:44px;font-weight:950;color:var(--brand);letter-spacing:-.03em;margin:14px 0}
 .sceneSub{border-top:1px solid var(--line);margin-top:56px;padding-top:56px}
+.cardClickable{cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.cardClickable:hover,.cardClickable:focus-visible{transform:translateY(-3px);box-shadow:0 14px 30px rgba(79,45,18,.10);outline:none}
 
 /* CTA flotante de pedido en móvil — nunca compite con el carrito flotante (se ocultan mutuamente por lógica en JS) */
 .stickyOrderCta{display:none}
