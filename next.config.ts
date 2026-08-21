@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
         hostname: 'media.club-basa.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        pathname: '/v0/b/club-basa-acapulco.firebasestorage.app/o/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'club-basa-acapulco.firebasestorage.app',
+        pathname: '/**',
+      },
     ],
   },
   compress: true,
