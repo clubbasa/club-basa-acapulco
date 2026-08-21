@@ -11,6 +11,10 @@ import ContactForm from '@/components/ContactForm';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
+// "Gancho" is an internal merchandising category (attraction/loss-leader products).
+// Its products stay visible under "Todos" — only the category label is hidden from customers.
+const INTERNAL_ONLY_CATEGORIES = new Set(['gancho']);
+const isInternalCategory = (name: string) => INTERNAL_ONLY_CATEGORIES.has(name.toLowerCase());
 
 export default function Home() {
   const [products, setProducts] = useState<CatalogProduct[]>(getFallbackProducts());
@@ -116,11 +120,11 @@ export default function Home() {
       <section id="beneficios"><Reveal><div className="container"><div className="sectionHead"><h2>La oferta está diseñada para que pedir sea fácil.</h2><p>Oferta clara, catálogo rápido y WhatsApp listo para cerrar el pedido.</p></div><div className="grid3"><div className="card"><div className="icon">🧁</div><h3>Six completo</h3><p>$150 con recipiente y papel grado alimenticio.</p></div><div className="card"><div className="icon">☕</div><h3>Regalo de primera compra</h3><p>En tu primer six recibes un café de grano arábica.</p></div><div className="card"><div className="icon">📲</div><h3>Pedido en WhatsApp</h3><p>Selecciona productos, arma tu pedido y envíalo con un toque.</p></div></div></div></Reveal></section>
 
       <section id="menu"><Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
-        <div className="categoryTabs" role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
+        <div className="categoryTabs" role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.filter((category) => !isInternalCategory(category.id)).map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div> : <div className="menuImage menuImageEmpty" aria-hidden="true">Sin imagen</div>}
-          <div className="menuTop"><strong>{product.name}</strong><span className="tag">{product.category}</span></div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
+          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
         </article>)}</div>
         {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
       </div></Reveal></section>
@@ -141,7 +145,7 @@ export default function Home() {
         <button className="productModalClose" aria-label="Cerrar detalles del producto" onClick={() => setSelectedProduct(null)}>×</button>
         {selectedProduct.image ? <div className="productModalImage"><Image src={selectedProduct.image} alt={selectedProduct.name} fill sizes="(max-width: 760px) 100vw, 760px" priority/></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
         <div className="productModalBody">
-          <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2><span className="tag">{selectedProduct.category}</span></div>
+          <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2>{!isInternalCategory(selectedProduct.category) && <span className="tag">{selectedProduct.category}</span>}</div>
           <p className="productModalDescription">{selectedProduct.description}</p>
           {selectedProduct.availability && <span className="small">{selectedProduct.availability}</span>}
           <div className="productModalPrice">{selectedProduct.price ? `$${selectedProduct.price}` : 'Consultar'}</div>
