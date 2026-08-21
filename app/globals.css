@@ -25,7 +25,7 @@ html{scroll-snap-type:y proximity}
 
 .sceneEyebrow{display:inline-flex;padding:9px 14px;border-radius:9px;background:var(--cream);color:#282828;font-weight:800;font-size:14px;margin-bottom:16px}
 .sceneMedia{position:relative;border-radius:28px;overflow:hidden;background:var(--cream);box-shadow:var(--shadow)}
-.sceneGrid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.sceneGrid{display:grid;grid-template-columns:1.3fr 1fr;gap:56px;align-items:center}
 @media(max-width:850px){.sceneGrid{grid-template-columns:1fr;gap:28px}}
 .scenePrice{font-size:44px;font-weight:950;color:var(--brand);letter-spacing:-.03em;margin:14px 0}
 .sceneSub{border-top:1px solid var(--line);margin-top:56px;padding-top:56px}
