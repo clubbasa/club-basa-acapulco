@@ -306,7 +306,7 @@ export default function Admin() {
 
   if (loading) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Cargando permisos…</p></main>;
   if (!user) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Inicia sesión para continuar.</p><a className="btn primary" href="/login">Entrar</a></main>;
-  if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><a className="btn secondary" href="/">Volver al catálogo</a></main>;
+  if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><p>Si eres cliente, tu contenido exclusivo está en <a href="/mi-cuenta">Mi cuenta</a>.</p><div style={{ display: 'flex', gap: 10 }}><a className="btn primary" href="/mi-cuenta">Ir a Mi cuenta</a><a className="btn secondary" href="/">Volver al catálogo</a></div></main>;
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
     <span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
