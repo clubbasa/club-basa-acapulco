@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, doc, getCountFromServer, getDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getCountFromServer, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
+import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
 
 const AREA_LABELS: Record<string, string> = { menu: 'Menú', beneficios: 'Beneficios', envios: 'Envíos', testimonios: 'Testimonios', compartir: 'Compartir', faq: 'FAQ', contacto: 'Contacto' };
 const PAGE_LABELS: Record<string, string> = { '/': 'Inicio', '/blog': 'Blog', '/blog/panquecitos-acapulco': 'Blog · Panquecitos', '/blog/menu-club-basa': 'Blog · Menú', '/blog/envios-acapulco': 'Blog · Envíos' };
 type VisitStats = { totalViews: number; areas: { key: string; label: string; count: number }[]; pages: { key: string; label: string; count: number }[] };
+type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean };
+const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = { promo: 'Promoción', evento: 'Evento', video: 'Video', imagen: 'Imagen' };
 
 const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
 const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: true, sortOrder: 0 };
+const blankPromotion: Promotion = { id: '', title: '', description: '', type: 'promo', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
 
@@ -33,9 +37,16 @@ export default function Admin() {
   const [message, setMessage] = useState('');
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [customers, setCustomers] = useState<CustomerAccount[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promotion, setPromotion] = useState<Promotion>(blankPromotion);
+  const [selectedPromotionImage, setSelectedPromotionImage] = useState<File | null>(null);
+  const [promotionImagePreview, setPromotionImagePreview] = useState('');
+  const [savingPromotion, setSavingPromotion] = useState(false);
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const promotionImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = async () => {
     const result = await getCatalog();
@@ -66,6 +77,20 @@ export default function Admin() {
     }
   };
 
+  const loadCustomers = async () => {
+    const snap = await getDocs(collection(db, 'users'));
+    setCustomers(snap.docs.map((item) => ({ uid: item.id, ...item.data() } as CustomerAccount)));
+  };
+
+  const toggleCustomerEnabled = async (uid: string, enabled: boolean) => {
+    await updateDoc(doc(db, 'users', uid), { enabled });
+    await loadCustomers();
+  };
+
+  const loadPromotions = async () => {
+    setPromotions(await getPromotions());
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -73,7 +98,7 @@ export default function Admin() {
       try {
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         setIsAdmin(adminDoc.exists() && adminDoc.data()?.enabled === true);
-        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats()]);
+        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions()]);
       } catch (error) {
         console.error(error);
         setIsAdmin(false);
@@ -85,6 +110,10 @@ export default function Admin() {
   useEffect(() => () => {
     if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
+
+  useEffect(() => () => {
+    if (promotionImagePreview.startsWith('blob:')) URL.revokeObjectURL(promotionImagePreview);
+  }, [promotionImagePreview]);
 
   const categoryNames = useMemo(() => categories.map((item) => item.name), [categories]);
 
@@ -221,6 +250,52 @@ export default function Admin() {
     if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
+  const choosePromotionImage = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return setMessage('Selecciona una imagen válida.');
+    if (file.size > MAX_IMAGE_SIZE) return setMessage('La imagen no puede superar 15 MB.');
+    if (promotionImagePreview.startsWith('blob:')) URL.revokeObjectURL(promotionImagePreview);
+    setSelectedPromotionImage(file);
+    setPromotionImagePreview(URL.createObjectURL(file));
+  };
+
+  const savePromotionForm = async () => {
+    if (!promotion.id || !promotion.title) return setMessage('Completa ID y título de la promoción.');
+    setSavingPromotion(true);
+    setMessage('Guardando promoción…');
+    try {
+      let promotionToSave: Promotion = { ...promotion, sortOrder: Number(promotion.sortOrder) };
+      if (selectedPromotionImage) {
+        const uploaded = await uploadPromotionImage(promotion.id, selectedPromotionImage);
+        promotionToSave = { ...promotionToSave, image: uploaded.image };
+      }
+      await savePromotion(promotionToSave);
+      await loadPromotions();
+      setPromotion(promotionToSave);
+      setSelectedPromotionImage(null);
+      setPromotionImagePreview(promotionToSave.image || '');
+      if (promotionImageInputRef.current) promotionImageInputRef.current.value = '';
+      setMessage('Promoción guardada.');
+    } catch (error) {
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'No se pudo guardar la promoción.');
+    } finally { setSavingPromotion(false); }
+  };
+
+  const editPromotion = (item: Promotion) => {
+    setPromotion(item);
+    setSelectedPromotionImage(null);
+    setPromotionImagePreview(item.image || '');
+    if (promotionImageInputRef.current) promotionImageInputRef.current.value = '';
+  };
+
+  const newPromotion = () => {
+    setPromotion(blankPromotion);
+    setSelectedPromotionImage(null);
+    setPromotionImagePreview('');
+    if (promotionImageInputRef.current) promotionImageInputRef.current.value = '';
+  };
+
   const saveCategoryForm = async () => {
     if (!category.id || !category.name) return setMessage('Completa ID y nombre de categoría.');
     await saveCategory({ ...category, slug: category.slug || slugifyCatalog(category.name), sortOrder: Number(category.sortOrder) });
@@ -248,6 +323,47 @@ export default function Admin() {
         </div>
       </> : <p>Sin datos todavía.</p>}
     </div></section>
+
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Usuarios</h2><p>{customers.length} cuentas registradas. Aprueba o revoca el acceso a contenido exclusivo.</p></div><div className="grid3">{customers.map((item) => <div className="card" key={item.uid}>
+      <strong>{item.name || 'Sin nombre'}</strong>
+      <p>{item.email}</p>
+      {item.whatsapp && <p>{item.whatsapp}</p>}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}>
+        <input type="checkbox" checked={item.enabled === true} onChange={(e) => toggleCustomerEnabled(item.uid, e.target.checked)} /> Cuenta aprobada
+      </label>
+    </div>)}{customers.length === 0 && <p>Todavía no hay cuentas registradas.</p>}</div></section>
+
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Promociones</h2><p>{promotions.length} elementos. Solo los marcados como activos son visibles en /mi-cuenta para cuentas aprobadas.</p></div><div className="grid3">{promotions.map((item) => <div className="card" key={item.id}>
+      <strong>{item.title}</strong><p>{PROMOTION_TYPE_LABELS[item.type]}</p>
+      {item.image && <img src={item.image} alt={item.title} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, marginTop: 8 }} />}
+      <small>{item.active ? 'Activo' : 'Inactivo'}</small>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button type="button" className="btn secondary" onClick={() => editPromotion(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removePromotion(item.id); await loadPromotions(); }}>Eliminar</button></div>
+    </div>)}</div>
+
+    <div className="card" style={{ marginTop: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h3>{promotion.id ? 'Editar promoción' : 'Nueva promoción'}</h3>{promotion.id && <button type="button" className="btn secondary" onClick={newPromotion}>Nueva promoción</button>}</div>
+      <div className="grid3">
+        <div className="field"><label>ID único</label><input value={promotion.id} onChange={(e) => setPromotion({ ...promotion, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })} placeholder="promo-agosto" /></div>
+        <div className="field"><label>Título</label><input value={promotion.title} onChange={(e) => setPromotion({ ...promotion, title: e.target.value })} /></div>
+        <div className="field"><label>Tipo</label><select value={promotion.type} onChange={(e) => setPromotion({ ...promotion, type: e.target.value as PromotionType })}>{Object.entries(PROMOTION_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+        <div className="field"><label>Orden</label><input type="number" value={promotion.sortOrder} onChange={(e) => setPromotion({ ...promotion, sortOrder: Number(e.target.value) })}/></div>
+      </div>
+      <div className="field"><label>Descripción</label><textarea value={promotion.description} onChange={(e) => setPromotion({ ...promotion, description: e.target.value })} rows={3}/></div>
+
+      <div className="field" style={{ marginTop: 18 }}><label>Imagen</label><div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+        {promotionImagePreview && <img src={promotionImagePreview} alt="Vista previa" style={{ width: 220, maxWidth: '100%', aspectRatio: '16 / 9', objectFit: 'contain', background: '#fff8ef', borderRadius: 12, border: '1px solid #ddd' }} />}
+        <div><input ref={promotionImageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" onChange={(e) => choosePromotionImage(e.target.files?.[0])} style={{ display: 'none' }} /><button type="button" className="btn secondary" onClick={() => promotionImageInputRef.current?.click()}>Cargar imagen</button>{selectedPromotionImage && <small> Seleccionada: {selectedPromotionImage.name}</small>}</div>
+      </div></div>
+
+      {promotion.type === 'video' && <div className="field" style={{ marginTop: 18 }}><label>Video (URL externa)</label><div className="grid3">
+        <div className="field"><label>Fuente</label><select value={promotion.videoProvider || ''} onChange={(e) => setPromotion({ ...promotion, videoProvider: (e.target.value || undefined) as Promotion['videoProvider'] })}><option value="">Selecciona</option>{productVideoProviders.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}</select></div>
+        <div className="field" style={{ gridColumn: 'span 2' }}><label>URL del video</label><input value={promotion.videoUrl || ''} onChange={(e) => setPromotion({ ...promotion, videoUrl: e.target.value })} placeholder="https://..." /></div>
+      </div></div>}
+
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 18, cursor: 'pointer' }}><input type="checkbox" checked={promotion.active} onChange={(e) => setPromotion({ ...promotion, active: e.target.checked })} /> Activa (visible en /mi-cuenta)</label>
+      <div style={{ marginTop: 18 }}><button type="button" className="btn primary" onClick={savePromotionForm} disabled={savingPromotion}>{savingPromotion ? 'Guardando…' : 'Guardar promoción'}</button></div>
+    </div>
+    </section>
 
     <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
 

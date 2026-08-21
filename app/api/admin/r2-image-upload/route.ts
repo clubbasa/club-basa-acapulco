@@ -13,6 +13,7 @@ const ALLOWED_IMAGE_TYPES = new Set([
   'image/heic',
   'image/heif',
 ]);
+const ALLOWED_FOLDERS = new Set(['products', 'promotions']);
 
 function safeSegment(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'producto';
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     const contentType = String(body.contentType || '');
     const size = Number(body.size || 0);
     const productId = safeSegment(String(body.productId || ''));
+    const folder = ALLOWED_FOLDERS.has(String(body.folder)) ? String(body.folder) : 'products';
 
     if (!filename || !productId) return NextResponse.json({ error: 'Faltan datos de la imagen.' }, { status: 400 });
     if (!ALLOWED_IMAGE_TYPES.has(contentType)) return NextResponse.json({ error: 'Formato de imagen no permitido. Usa JPG, PNG, WEBP, AVIF, HEIC o HEIF.' }, { status: 400 });
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
 
     const bucket = process.env.R2_BUCKET_NAME || 'club-basa-videos';
     const publicBaseUrl = (process.env.R2_PUBLIC_BASE_URL || 'https://media.club-basa.com').replace(/\/$/, '');
-    const key = `images/products/${productId}/${crypto.randomUUID()}-${safeFilename(filename)}`;
+    const key = `images/${folder}/${productId}/${crypto.randomUUID()}-${safeFilename(filename)}`;
     const uploadUrl = await getSignedUrl(
       getS3Client(),
       new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }),

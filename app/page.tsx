@@ -100,7 +100,7 @@ export default function Home() {
         title="Clic: inicio · Doble clic/tap: acceso administrativo"
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
-      <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a></nav>
+      <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_header')}>◔ &nbsp;Pedir por WhatsApp</a>
     </div></header>
 
@@ -133,7 +133,7 @@ export default function Home() {
 
       <section id="faq"><Reveal><div className="container"><div className="sectionHead"><h2>Preguntas frecuentes</h2></div><div className="faq"><details><summary>¿Cuánto cuesta el six?</summary><p>El six cuesta $150 e incluye recipiente y papel grado alimenticio.</p></details><details><summary>¿Qué recibo en mi primera compra?</summary><p>En la primera compra del six recibes un café de grano arábica.</p></details><details><summary>¿Puedo comprar una sola pieza?</summary><p>Sí, la pieza individual cuesta $25, sujeta a disponibilidad de 8:00 a 11:00 h.</p></details><details><summary>¿Tienen envío?</summary><p>Sí. El reparto es externo a Club BASA. Se cotiza con tu ubicación.</p></details><details><summary>¿Puedo pedir sobre pedido?</summary><p>Sí, de hecho es lo recomendado para asegurar disponibilidad.</p></details></div></div></Reveal></section>
 
-      <section id="contacto"><Reveal><div className="container contact"><div><div className="sectionHead"><h2>¿Quieres recibir promociones?</h2><p>Regístrate para acceder a promociones especiales y novedades.</p></div><button className="btn primary" onClick={() => { document.getElementById('contact-name')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); document.getElementById('contact-name')?.focus(); }}>Crear mi cuenta</button></div><ContactForm/></div></Reveal></section>
+      <section id="contacto"><Reveal><div className="container contact"><div><div className="sectionHead"><h2>¿Quieres recibir promociones?</h2><p>Regístrate para acceder a promociones especiales y novedades.</p></div><a className="btn primary" href="/registro" onClick={() => track('cta_crear_cuenta')}>Crear mi cuenta</a></div><ContactForm/></div></Reveal></section>
     </main>
 
     {selectedProduct && <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
