@@ -97,4 +97,3 @@ export async function uploadProductImage(productId: string, file: File) {
 export async function removeProduct(id: string) { await deleteDoc(doc(productsRef, id)); }
 export async function saveCategory(category: CatalogCategory) { await setDoc(doc(categoriesRef, category.id), { ...category, updatedAt: serverTimestamp() }, { merge: true }); }
 export async function removeCategory(id: string) { await deleteDoc(doc(categoriesRef, id)); }
-export async function seedCatalog() { const categories = getFallbackCategories(); const products = getFallbackProducts(); await Promise.all([...categories.map(saveCategory), ...products.map(saveProduct)]); }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, doc, getCountFromServer, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, seedCatalog, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
+import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
 
@@ -302,8 +302,6 @@ export default function Admin() {
     await load(); setCategory(blankCategory); setMessage('Categoría guardada.');
   };
 
-  const initialize = async () => { await seedCatalog(); await load(); setMessage('Catálogo inicial sincronizado con Firestore.'); };
-
   if (loading) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Cargando permisos…</p></main>;
   if (!user) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Inicia sesión para continuar.</p><a className="btn primary" href="/login">Entrar</a></main>;
   if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><p>Si eres cliente, tu contenido exclusivo está en <a href="/mi-cuenta">Mi cuenta</a>.</p><div style={{ display: 'flex', gap: 10 }}><a className="btn primary" href="/mi-cuenta">Ir a Mi cuenta</a><a className="btn secondary" href="/">Volver al catálogo</a></div></main>;
@@ -364,8 +362,6 @@ export default function Admin() {
       <div style={{ marginTop: 18 }}><button type="button" className="btn primary" onClick={savePromotionForm} disabled={savingPromotion}>{savingPromotion ? 'Guardando…' : 'Guardar promoción'}</button></div>
     </div>
     </section>
-
-    <section style={{ padding: '25px 0' }}><div className="card"><h2>Primera configuración</h2><p>Si Firestore está vacío, carga los productos actuales como punto de partida.</p><button type="button" className="btn primary" onClick={initialize}>Sincronizar catálogo inicial</button></div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Productos</h2><p>{products.length} productos en Firestore.</p></div><div className="grid3">{products.map((item) => <div className="card" key={item.id}>
       <strong>{item.name}</strong><p>{item.category} · ${item.price}</p>
