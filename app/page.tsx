@@ -26,8 +26,9 @@ export default function Home() {
   const [cartHydrated, setCartHydrated] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const closedViaBackRef = useRef(false);
-  const [imageZoom, setImageZoom] = useState(1);
-  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
+  // zoom+pan live in one state object so the wheel handler below can update
+  // both in a single, pure setState call (see react-doctor/no-impure-state-updater).
+  const [imageView, setImageView] = useState({ zoom: 1, pan: { x: 0, y: 0 } });
   const [isPanningImage, setIsPanningImage] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const productImageRef = useRef<HTMLDivElement>(null);
@@ -96,8 +97,7 @@ export default function Home() {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
-    setImageZoom(1);
-    setImagePan({ x: 0, y: 0 });
+    setImageView({ zoom: 1, pan: { x: 0, y: 0 } });
   }, [selectedProduct]);
 
   useEffect(() => {
@@ -107,10 +107,9 @@ export default function Home() {
     // ignores preventDefault() — attach natively so zooming doesn't also scroll the page.
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      setImageZoom((zoom) => {
-        const next = Math.min(4, Math.max(1, zoom - event.deltaY * 0.0015));
-        setImagePan((pan) => (next === 1 ? { x: 0, y: 0 } : clampPan(pan, next)));
-        return next;
+      setImageView((view) => {
+        const nextZoom = Math.min(4, Math.max(1, view.zoom - event.deltaY * 0.0015));
+        return { zoom: nextZoom, pan: nextZoom === 1 ? { x: 0, y: 0 } : clampPan(view.pan, nextZoom) };
       });
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
@@ -173,18 +172,18 @@ export default function Home() {
     return { x: Math.min(max, Math.max(-max, pan.x)), y: Math.min(max, Math.max(-max, pan.y)) };
   };
   const onImageMouseDown = (event: React.MouseEvent) => {
-    if (imageZoom <= 1) return;
+    if (imageView.zoom <= 1) return;
     event.preventDefault();
     setIsPanningImage(true);
-    panStartRef.current = { x: event.clientX, y: event.clientY, panX: imagePan.x, panY: imagePan.y };
+    panStartRef.current = { x: event.clientX, y: event.clientY, panX: imageView.pan.x, panY: imageView.pan.y };
   };
   const onImageMouseMove = (event: React.MouseEvent) => {
     if (!isPanningImage) return;
     const start = panStartRef.current;
-    setImagePan(clampPan({ x: start.panX + (event.clientX - start.x), y: start.panY + (event.clientY - start.y) }, imageZoom));
+    setImageView((view) => ({ ...view, pan: clampPan({ x: start.panX + (event.clientX - start.x), y: start.panY + (event.clientY - start.y) }, view.zoom) }));
   };
   const stopPanningImage = () => setIsPanningImage(false);
-  const resetImageZoom = () => { setImageZoom(1); setImagePan({ x: 0, y: 0 }); };
+  const resetImageZoom = () => setImageView({ zoom: 1, pan: { x: 0, y: 0 } });
   const share = async () => {
     const data = { title: 'Club BASA Acapulco', text: 'Mira el menú de Club BASA 👇', url: window.location.href };
     if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
@@ -373,7 +372,7 @@ export default function Home() {
           onMouseUp={stopPanningImage}
           onMouseLeave={stopPanningImage}
           onDoubleClick={resetImageZoom}
-          style={{ cursor: imageZoom > 1 ? (isPanningImage ? 'grabbing' : 'grab') : 'zoom-in' }}
+          style={{ cursor: imageView.zoom > 1 ? (isPanningImage ? 'grabbing' : 'grab') : 'zoom-in' }}
         ><Image
           src={selectedProduct.image}
           alt={selectedProduct.name}
@@ -381,7 +380,7 @@ export default function Home() {
           sizes="(max-width: 760px) 100vw, 760px"
           priority
           draggable={false}
-          style={{ transform: `translate(${imagePan.x}px, ${imagePan.y}px) scale(${imageZoom})`, transition: isPanningImage ? 'none' : 'transform .15s ease-out' }}
+          style={{ transform: `translate(${imageView.pan.x}px, ${imageView.pan.y}px) scale(${imageView.zoom})`, transition: isPanningImage ? 'none' : 'transform .15s ease-out' }}
         /></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
         <div className="productModalBody">
           <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2>{!isInternalCategory(selectedProduct.category) && <span className="tag">{selectedProduct.category}</span>}</div>
