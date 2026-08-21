@@ -8,9 +8,19 @@ import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, s
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
 
-const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', malteadas: 'Malteadas', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
+const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', oferta: 'Oferta', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
+const CTA_LABELS: Record<string, string> = { header_order: 'Header · Pedir', hero_order: 'Hero · Pedir ahora', hero_menu: 'Hero · Ver menú', six_order: 'Six · Quiero mi six', offer_order: 'Oferta · Aprovechar', menu_explore: 'Categorías · Ver menú', final_order: 'Cierre · Pedir', final_menu: 'Cierre · Ver menú', sticky_order: 'Sticky móvil · Pedir', envios_cotizar: 'Envíos · Cotizar', experiencia_contacto: 'Experiencia · WhatsApp' };
+const PRODUCT_ID_LABELS: Record<string, string> = { six: 'Six de panquecitos', single: 'Panquecito individual', waffle: 'Waffle', crepa: 'Crepa', shake: 'Malteada', special: 'Especialidad de malteada', tea: 'Té', aloe: 'Aloe', fiber: 'Fibra', fruit: 'Ponche de frutas', rolls: 'Rollitos salados', coffee: 'Café grano arábica', menu: 'Poster de menú' };
 const PAGE_LABELS: Record<string, string> = { '/': 'Inicio', '/blog': 'Blog', '/blog/panquecitos-acapulco': 'Blog · Panquecitos', '/blog/menu-club-basa': 'Blog · Menú', '/blog/envios-acapulco': 'Blog · Envíos' };
-type VisitStats = { totalViews: number; areas: { key: string; label: string; count: number }[]; pages: { key: string; label: string; count: number }[] };
+type VisitStats = {
+  totalViews: number;
+  areas: { key: string; label: string; count: number }[];
+  pages: { key: string; label: string; count: number }[];
+  ctas: { key: string; label: string; count: number }[];
+  productViews: { key: string; label: string; count: number }[];
+  addToCarts: { key: string; label: string; count: number }[];
+  beginOrders: number;
+};
 type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean };
 type ContactMessage = { id: string; name?: string; contact?: string; message?: string; createdAt?: { toDate: () => Date } };
 const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = { promo: 'Promoción', evento: 'Evento', video: 'Video', imagen: 'Imagen' };
@@ -60,10 +70,14 @@ export default function Admin() {
     setLoadingStats(true);
     try {
       const analyticsRef = collection(db, 'analytics');
-      const [totalSnap, areaSnaps, pageSnaps] = await Promise.all([
+      const [totalSnap, areaSnaps, pageSnaps, ctaSnaps, productViewSnaps, addToCartSnaps, beginOrderSnap] = await Promise.all([
         getCountFromServer(query(analyticsRef, where('type', '==', 'page_view'))),
         Promise.all(Object.keys(AREA_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('key', '==', `area:${key}`))))),
         Promise.all(Object.keys(PAGE_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('key', '==', `page:${key}`))))),
+        Promise.all(Object.keys(CTA_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('key', '==', `cta:${key}`))))),
+        Promise.all(Object.keys(PRODUCT_ID_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('type', '==', 'view_product'), where('key', '==', `product:${key}`))))),
+        Promise.all(Object.keys(PRODUCT_ID_LABELS).map((key) => getCountFromServer(query(analyticsRef, where('type', '==', 'add_to_cart'), where('key', '==', `product:${key}`))))),
+        getCountFromServer(query(analyticsRef, where('type', '==', 'begin_order'))),
       ]);
       const areas = Object.keys(AREA_LABELS)
         .map((key, i) => ({ key, label: AREA_LABELS[key], count: areaSnaps[i].data().count }))
@@ -71,7 +85,18 @@ export default function Admin() {
       const pages = Object.keys(PAGE_LABELS)
         .map((key, i) => ({ key, label: PAGE_LABELS[key], count: pageSnaps[i].data().count }))
         .sort((a, b) => b.count - a.count);
-      setVisitStats({ totalViews: totalSnap.data().count, areas, pages });
+      const ctas = Object.keys(CTA_LABELS)
+        .map((key, i) => ({ key, label: CTA_LABELS[key], count: ctaSnaps[i].data().count }))
+        .sort((a, b) => b.count - a.count);
+      const productViews = Object.keys(PRODUCT_ID_LABELS)
+        .map((key, i) => ({ key, label: PRODUCT_ID_LABELS[key], count: productViewSnaps[i].data().count }))
+        .filter((item) => item.count > 0)
+        .sort((a, b) => b.count - a.count);
+      const addToCarts = Object.keys(PRODUCT_ID_LABELS)
+        .map((key, i) => ({ key, label: PRODUCT_ID_LABELS[key], count: addToCartSnaps[i].data().count }))
+        .filter((item) => item.count > 0)
+        .sort((a, b) => b.count - a.count);
+      setVisitStats({ totalViews: totalSnap.data().count, areas, pages, ctas, productViews, addToCarts, beginOrders: beginOrderSnap.data().count });
     } catch (error) {
       console.error(error);
     } finally {
@@ -326,10 +351,15 @@ export default function Admin() {
       <h2>Visitas del sitio</h2>
       <p style={{ color: '#6b7280', margin: '4px 0 14px' }}>Conteo interno de visitas por página y sección. No incluye direcciones IP ni datos de inicio de sesión.</p>
       {loadingStats ? <p>Cargando estadísticas…</p> : visitStats ? <>
-        <p><strong>{visitStats.totalViews}</strong> visitas totales registradas.</p>
+        <p><strong>{visitStats.totalViews}</strong> visitas totales · <strong>{visitStats.beginOrders}</strong> pedidos iniciados desde el carrito.</p>
         <div className="grid3" style={{ marginTop: 14 }}>
           <div><h3 style={{ fontSize: 16 }}>Áreas más visitadas</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.areas.map((a) => <li key={a.key}>{a.label}: {a.count}</li>)}</ul></div>
           <div><h3 style={{ fontSize: 16 }}>Páginas más visitadas</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.pages.map((p) => <li key={p.key}>{p.label}: {p.count}</li>)}</ul></div>
+          <div><h3 style={{ fontSize: 16 }}>CTA que más convierten</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.ctas.map((c) => <li key={c.key}>{c.label}: {c.count}</li>)}</ul></div>
+        </div>
+        <div className="grid3" style={{ marginTop: 14 }}>
+          <div><h3 style={{ fontSize: 16 }}>Productos más vistos</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.productViews.length ? visitStats.productViews.map((p) => <li key={p.key}>{p.label}: {p.count}</li>) : <li>Sin datos todavía.</li>}</ul></div>
+          <div><h3 style={{ fontSize: 16 }}>Más agregados al carrito</h3><ul style={{ margin: 0, paddingLeft: 18 }}>{visitStats.addToCarts.length ? visitStats.addToCarts.map((p) => <li key={p.key}>{p.label}: {p.count}</li>) : <li>Sin datos todavía.</li>}</ul></div>
         </div>
       </> : <p>Sin datos todavía.</p>}
     </div></section>

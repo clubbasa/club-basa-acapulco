@@ -35,6 +35,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const [showTabsFade, setShowTabsFade] = useState(false);
+  const [heroPassed, setHeroPassed] = useState(false);
 
   useEffect(() => {
     try {
@@ -142,6 +143,14 @@ export default function Home() {
   }, [selectedProduct]);
 
   useEffect(() => {
+    const hero = document.getElementById('hero');
+    if (!hero) return;
+    const io = new IntersectionObserver(([entry]) => setHeroPassed(!entry.isIntersecting), { threshold: 0 });
+    io.observe(hero);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
     const sections = Array.from(document.querySelectorAll<HTMLElement>('main > section[id]'));
     if (!sections.length) return;
     const seen = new Set<string>();
@@ -165,7 +174,7 @@ export default function Home() {
   const add = (id: string, delta: number) => setCart((current) => ({ ...current, [id]: Math.max(0, (current[id] || 0) + delta) }));
   const openProduct = (product: CatalogProduct) => {
     setSelectedProduct(product);
-    track('view_product', { product: product.name });
+    track('view_product', { product: product.id });
   };
   const clampPan = (pan: { x: number; y: number }, zoom: number) => {
     const max = (zoom - 1) * 160;
@@ -217,7 +226,7 @@ export default function Home() {
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
-      <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_header')}>◔ &nbsp;Pedir por WhatsApp</a>
+      <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir por WhatsApp</a>
       <button type="button" className="navToggle" aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? '✕' : '☰'}</button>
     </div>
     {mobileMenuOpen && <nav id="mobile-menu" className="mobileMenu" aria-label="Menú móvil" onClick={() => setMobileMenuOpen(false)}>
@@ -230,7 +239,8 @@ export default function Home() {
       <section id="hero" className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
         <span className="eyebrow heroEyebrow">Producto estrella • Panquecitos Club BASA</span><h1>Sabor que<br/>enamora.<br/>Nutrición que<br/><em>transforma.</em></h1>
         <p>Panquecitos altos en proteína, sin harinas ni aceite, hechos con avena y nutrición Herbalife. El snack perfecto para disfrutar.</p>
-        <div className="actions"><a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_hero')}>◔ &nbsp;Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={() => track('cta_menu')}>Ver menú</a></div>
+        <p className="small" style={{ color: '#fff', opacity: .85 }}>También: malteadas, waffles, crepas y bebidas.</p>
+        <div className="actions"><a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'hero_order' })}>◔ &nbsp;Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={() => track('cta_click', { cta: 'hero_menu' })}>Ver menú</a></div>
         <div className="heroTrust"><span>◯ <b>Sin harinas</b><small>ni aceite</small></span><span>◉ <b>Altos en</b><small>proteína</small></span><span>♡ <b>Hechos con</b><small>nutrición Herbalife</small></span></div>
       </div></div>
       <div className="heroOffer container"><div className="offerItem"><div className="offerIcon">☕</div><div><strong>Primera compra de six</strong><p>Incluye recipiente + papel grado alimenticio<br/>y café de grano arábica de regalo.</p></div></div><div className="offerItem offerPrice"><div className="offerIcon">▣</div><div><strong>Six de panquecitos</strong><b>$150</b></div></div><div className="offerItem"><div className="offerIcon">🛵</div><div><strong>Envío a domicilio</strong><p>Zona cercana $60 • Zona ampliada $80<br/>Fuera de zona: cotización personalizada.</p></div></div></div></section>
@@ -247,50 +257,56 @@ export default function Home() {
               <h2>Six de panquecitos</h2>
               <p>{sixProduct?.description || '6 panquecitos en recipiente con papel grado alimenticio.'}</p>
               <div className="scenePrice">{sixProduct?.price ? `$${sixProduct.price}` : 'Consultar'}</div>
-              <div id="beneficios" className="grid3" style={{ margin: '10px 0 28px' }}>
-                <div className="card"><div className="icon">🧁</div><h3>Six completo</h3><p>$150 con recipiente y papel grado alimenticio.</p></div>
-                <div className="card"><div className="icon">☕</div><h3>Regalo de primera compra</h3><p>En tu primer six recibes un café de grano arábica.</p></div>
-                <div className="card"><div className="icon">📲</div><h3>Pedido en WhatsApp</h3><p>Selecciona productos, arma tu pedido y envíalo con un toque.</p></div>
+              <div id="beneficios" className="grid3" style={{ margin: '10px 0 28px', gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <div className="card"><div className="icon">🧁</div><h3>6 piezas</h3><p>En recipiente con papel grado alimenticio.</p></div>
+                <div className="card"><div className="icon">📲</div><h3>Pedido en WhatsApp</h3><p>Arma tu pedido y envíalo con un toque.</p></div>
               </div>
-              <button type="button" className="btn primary" onClick={() => sixProduct && openProduct(sixProduct)}>Quiero mi six</button>
+              <button type="button" className="btn primary" onClick={() => { track('cta_click', { cta: 'six_order' }); sixProduct && openProduct(sixProduct); }}>Quiero mi six</button>
             </div>
           </div>
         </div>
       </ScrollScene>
 
-      {/* Escena 3 — Malteadas */}
-      <ScrollScene id="malteadas">
+      {/* Escena 3 — Oferta / razón para comprar ahora: usa la promoción real de primera compra (misma que ya existe en el hero), no se inventa nada nuevo */}
+      <ScrollScene id="oferta">
         <div className="container sceneGrid">
           <div className="sceneMedia" style={{ aspectRatio: '4 / 5' }}>
-            {shakeProduct?.image ? <Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 50vw" /> : <div className="menuImageEmpty" style={{ position: 'absolute', inset: 0 }}>Sin imagen</div>}
+            {sixProduct?.image ? <Image src={sixProduct.image} alt="Six de panquecitos con regalo de bienvenida" fill sizes="(max-width: 850px) 100vw, 50vw" /> : <div className="menuImageEmpty" style={{ position: 'absolute', inset: 0 }}>Sin imagen</div>}
           </div>
           <div>
-            <span className="sceneEyebrow">Bebidas</span>
-            <h2>Malteadas preparadas al momento</h2>
-            <p>{shakeProduct?.description || 'Preparada al momento.'}</p>
-            <div className="scenePrice">{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</div>
-            {specialProduct && <p className="small">¿Buscas algo distinto? Pregunta por la {specialProduct.name.toLowerCase()}.</p>}
-            <button type="button" className="btn primary" style={{ marginTop: 14 }} onClick={() => shakeProduct && openProduct(shakeProduct)}>Quiero mi malteada</button>
+            <span className="sceneEyebrow">Oferta de bienvenida</span>
+            <h2>En tu primera compra, café de regalo</h2>
+            <p>Six de panquecitos + recipiente y papel grado alimenticio + café de grano arábica, sin costo extra.</p>
+            <div className="scenePrice">{sixProduct?.price ? `$${sixProduct.price}` : 'Consultar'}</div>
+            <button type="button" className="btn primary" style={{ marginTop: 14 }} onClick={() => { track('cta_click', { cta: 'offer_order' }); sixProduct && openProduct(sixProduct); }}>Aprovechar oferta</button>
           </div>
         </div>
       </ScrollScene>
 
-      {/* Escena 4 — Categorías: introducción, no catálogo completo */}
+      {/* Escena 4 — Descubrir el menú: mapa de categorías reales para aumentar ticket promedio, no el catálogo completo */}
       <ScrollScene id="categorias">
         <div className="container">
-          <div className="sectionHead"><h2>Y hay mucho más en el menú</h2><p>Waffles, crepas y especialidades para cada antojo.</p></div>
+          <div className="sectionHead"><h2>Y hay mucho más para pedir</h2><p>Panquecitos, malteadas, waffles, crepas y especialidades.</p></div>
           <div className="grid3">
             <div className="card">
+              {sixProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={sixProduct.image} alt="Panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              <h3>Panquecitos</h3><p>{sixProduct?.price ? `Desde $${sixProduct.price}` : 'Consultar'}</p>
+            </div>
+            <div className="card">
+              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              <h3>Malteadas</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
+            </div>
+            <div className="card">
               {waffleProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={waffleProduct.image} alt="Waffle Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
-              <h3>Waffle</h3><p>{waffleProduct?.price ? `$${waffleProduct.price}` : 'Consultar'}</p>
+              <h3>Waffles</h3><p>{waffleProduct?.price ? `$${waffleProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
               {crepaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={crepaProduct.image} alt="Crepa Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
-              <h3>Crepa</h3><p>{crepaProduct?.price ? `$${crepaProduct.price}` : 'Consultar'}</p>
+              <h3>Crepas</h3><p>{crepaProduct?.price ? `$${crepaProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card"><div className="icon">🌯</div><h3>Especialidades</h3><p>Rollitos salados y más, sobre pedido.</p></div>
           </div>
-          <div style={{ marginTop: 32, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_ver_menu_categorias')}>Ver todo el menú</a></div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_click', { cta: 'menu_explore' })}>Ver todo el menú</a></div>
         </div>
       </ScrollScene>
 
@@ -300,7 +316,7 @@ export default function Home() {
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/></div> : <div className="menuImage menuImageEmpty" aria-hidden="true">Sin imagen</div>}
-          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.name }); }}>+</button></div>
+          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
         </article>)}</div>
         {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
       </div></Reveal></section>
@@ -314,9 +330,15 @@ export default function Home() {
             <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={heroImage} alt="Panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>
             {specialProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={specialProduct.image} alt={specialProduct.name} fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
           </div>
-          <div className="sceneSub">
-            <div className="sectionHead"><h2>Comparte Club BASA</h2><p>Envíale la página a quien siempre pregunta “¿dónde compraste eso?”</p></div>
-            <div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a></div>
+          <div className="sceneSub" style={{ display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div className="sectionHead"><h2>Comparte Club BASA</h2><p>Envíale la página a quien siempre pregunta “¿dónde compraste eso?”</p></div>
+              <div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a></div>
+            </div>
+            <div>
+              <div className="sectionHead"><h2>Contáctanos directo</h2><p>Dudas sobre tu pedido o disponibilidad, escríbenos por WhatsApp.</p></div>
+              <a className="btn secondary" href={waLink('Hola Club BASA, tengo una duda.')} onClick={() => track('cta_click', { cta: 'experiencia_contacto' })}>Escribir por WhatsApp</a>
+            </div>
           </div>
         </div>
       </ScrollScene>
@@ -329,8 +351,8 @@ export default function Home() {
             <p>Arma tu pedido y lo confirmamos por WhatsApp en minutos.</p>
           </div>
           <div className="actions" style={{ justifyContent: 'center' }}>
-            <a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_whatsapp_final')}>Pedir por WhatsApp</a>
-            <a className="btn secondary" href="#menu" onClick={() => track('cta_menu_final')}>Ver menú</a>
+            <a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'final_order' })}>Pedir por WhatsApp</a>
+            <a className="btn secondary" href="#menu" onClick={() => track('cta_click', { cta: 'final_menu' })}>Ver menú</a>
           </div>
 
           <div id="envios" className="sceneSub">
@@ -338,7 +360,7 @@ export default function Home() {
             <div className="grid3">
               <div className="card"><h3>$60 aprox.</h3><p>Zona cercana a La Garita, incluyendo referencias como VIPS de La Diana, Costera 125, Roble, Anclas y Laja.</p></div>
               <div className="card"><h3>$80 aprox.</h3><p>Progreso, zona Centro, Zócalo, Costa Azul y zonas dentro de ese rango.</p></div>
-              <div className="card"><h3>¿Fuera de zona?</h3><p>Envíanos tu ubicación. El repartidor cotiza el costo antes de confirmar.</p><a className="btn primary" href={waLink('Hola Club BASA, quiero cotizar mi envío. Les comparto mi ubicación.')}>Cotizar envío</a></div>
+              <div className="card"><h3>¿Fuera de zona?</h3><p>Envíanos tu ubicación. El repartidor cotiza el costo antes de confirmar.</p><a className="btn primary" href={waLink('Hola Club BASA, quiero cotizar mi envío. Les comparto mi ubicación.')} onClick={() => track('cta_click', { cta: 'envios_cotizar' })}>Cotizar envío</a></div>
             </div>
           </div>
 
@@ -360,6 +382,13 @@ export default function Home() {
         </div>
       </ScrollScene>
     </main>
+
+    {/* CTA sticky móvil: solo tras salir del hero, y solo si el carrito flotante no está ya visible (no compiten por espacio) */}
+    {heroPassed && items.length === 0 && <a
+      className="stickyOrderCta"
+      href={waLink('Hola Club BASA, quiero hacer un pedido.')}
+      onClick={() => track('cta_click', { cta: 'sticky_order' })}
+    >🛒 Pedir ahora</a>}
 
     {selectedProduct && <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
       <section className="productModal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -397,7 +426,7 @@ export default function Home() {
             </div>
           </div>}
 
-          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.name }); }}>+</button></div>
+          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
           <button className="btn primary productModalAdd" onClick={() => add(selectedProduct.id, 1)}>Agregar al carrito</button>
         </div>
       </section>
