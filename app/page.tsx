@@ -25,6 +25,11 @@ export default function Home() {
   const [cartHydrated, setCartHydrated] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const closedViaBackRef = useRef(false);
+  const [imageZoom, setImageZoom] = useState(1);
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
+  const [isPanningImage, setIsPanningImage] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const productImageRef = useRef<HTMLDivElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const [showTabsFade, setShowTabsFade] = useState(false);
@@ -85,6 +90,28 @@ export default function Home() {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
+    setImageZoom(1);
+    setImagePan({ x: 0, y: 0 });
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    const el = productImageRef.current;
+    if (!el) return;
+    // React attaches onWheel as a passive listener by default, which silently
+    // ignores preventDefault() — attach natively so zooming doesn't also scroll the page.
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setImageZoom((zoom) => {
+        const next = Math.min(4, Math.max(1, zoom - event.deltaY * 0.0015));
+        setImagePan((pan) => (next === 1 ? { x: 0, y: 0 } : clampPan(pan, next)));
+        return next;
+      });
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [selectedProduct]);
+
+  useEffect(() => {
     if (!selectedProduct) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSelectedProduct(null);
@@ -135,6 +162,23 @@ export default function Home() {
     setSelectedProduct(product);
     track('view_product', { product: product.name });
   };
+  const clampPan = (pan: { x: number; y: number }, zoom: number) => {
+    const max = (zoom - 1) * 160;
+    return { x: Math.min(max, Math.max(-max, pan.x)), y: Math.min(max, Math.max(-max, pan.y)) };
+  };
+  const onImageMouseDown = (event: React.MouseEvent) => {
+    if (imageZoom <= 1) return;
+    event.preventDefault();
+    setIsPanningImage(true);
+    panStartRef.current = { x: event.clientX, y: event.clientY, panX: imagePan.x, panY: imagePan.y };
+  };
+  const onImageMouseMove = (event: React.MouseEvent) => {
+    if (!isPanningImage) return;
+    const start = panStartRef.current;
+    setImagePan(clampPan({ x: start.panX + (event.clientX - start.x), y: start.panY + (event.clientY - start.y) }, imageZoom));
+  };
+  const stopPanningImage = () => setIsPanningImage(false);
+  const resetImageZoom = () => { setImageZoom(1); setImagePan({ x: 0, y: 0 }); };
   const share = async () => {
     const data = { title: 'Club BASA Acapulco', text: 'Mira el menú de Club BASA 👇', url: window.location.href };
     if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
@@ -201,7 +245,24 @@ export default function Home() {
     {selectedProduct && <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null); }}>
       <section className="productModal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" onMouseDown={(event) => event.stopPropagation()}>
         <button className="productModalClose" aria-label="Cerrar detalles del producto" onClick={() => setSelectedProduct(null)}>×</button>
-        {selectedProduct.image ? <div className="productModalImage"><Image src={selectedProduct.image} alt={selectedProduct.name} fill sizes="(max-width: 760px) 100vw, 760px" priority/></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
+        {selectedProduct.image ? <div
+          ref={productImageRef}
+          className="productModalImage"
+          onMouseDown={onImageMouseDown}
+          onMouseMove={onImageMouseMove}
+          onMouseUp={stopPanningImage}
+          onMouseLeave={stopPanningImage}
+          onDoubleClick={resetImageZoom}
+          style={{ cursor: imageZoom > 1 ? (isPanningImage ? 'grabbing' : 'grab') : 'zoom-in' }}
+        ><Image
+          src={selectedProduct.image}
+          alt={selectedProduct.name}
+          fill
+          sizes="(max-width: 760px) 100vw, 760px"
+          priority
+          draggable={false}
+          style={{ transform: `translate(${imagePan.x}px, ${imagePan.y}px) scale(${imageZoom})`, transition: isPanningImage ? 'none' : 'transform .15s ease-out' }}
+        /></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
         <div className="productModalBody">
           <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2>{!isInternalCategory(selectedProduct.category) && <span className="tag">{selectedProduct.category}</span>}</div>
           <p className="productModalDescription">{selectedProduct.description}</p>
