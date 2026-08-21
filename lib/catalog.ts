@@ -37,7 +37,7 @@ export async function getCatalog() {
 }
 
 export function getFallbackProducts(): CatalogProduct[] { return fallbackProducts.map((product, index) => ({ ...product, active: true, sortOrder: index })); }
-export function getFallbackCategories(): CatalogCategory[] { return Array.from(new Set(fallbackProducts.map((p) => p.category))).map((name, index) => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), active: true, sortOrder: index })); }
+export function getFallbackCategories(): CatalogCategory[] { return Array.from(new Set(fallbackProducts.map((p) => p.category))).map((name, index) => { const slug = slugifyCatalog(name); return { id: slug, name, slug, active: true, sortOrder: index }; }); }
 
 export async function saveProduct(product: CatalogProduct) {
   // Firestore stores catalog metadata only. Binary media lives in R2.
@@ -93,9 +93,6 @@ export async function uploadProductImage(productId: string, file: File) {
 
   return { image: payload.publicUrl as string, imagePath: payload.key as string };
 }
-
-/** Compatibility helper for the current admin page. R2 objects are not referenced by Firestore. */
-export async function removeProductImage(_imagePath?: string) { return; }
 
 export async function removeProduct(id: string) { await deleteDoc(doc(productsRef, id)); }
 export async function saveCategory(category: CatalogCategory) { await setDoc(doc(categoriesRef, category.id), { ...category, updatedAt: serverTimestamp() }, { merge: true }); }

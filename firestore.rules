@@ -7,6 +7,11 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
         && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.enabled == true;
     }
+    function isApprovedUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enabled == true;
+    }
 
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
@@ -14,7 +19,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, create, update: if signedIn() && request.auth.uid == uid;
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.enabled == false;
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid && request.resource.data.enabled == resource.data.enabled);
       allow delete: if isAdmin();
     }
 
@@ -29,7 +37,7 @@ service cloud.firestore {
     }
 
     match /promotions/{id} {
-      allow read: if signedIn();
+      allow read: if isAdmin() || isApprovedUser();
       allow write: if isAdmin();
     }
 

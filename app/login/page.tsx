@@ -22,7 +22,7 @@ export default function Login() {
       ]);
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      window.location.assign('/admin');
+      window.location.assign('/mi-cuenta');
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       const rawMessage = err instanceof Error ? err.message : '';
@@ -42,10 +42,10 @@ export default function Login() {
 
   return (
     <main className="container" style={{ padding: '80px 0', maxWidth: 520 }}>
-      <span className="eyebrow">Club BASA • Administración</span>
+      <span className="eyebrow">Club BASA • Mi cuenta</span>
       <h1>Inicia sesión</h1>
       <p style={{ color: '#6b7280' }}>
-        Acceso exclusivo para cuentas autorizadas en Firebase. La cuenta debe tener permisos de administrador en Firestore.
+        Entra con tu cuenta de Club BASA para ver tu contenido exclusivo o, si eres administrador, para acceder al panel.
       </p>
 
       <form className="form" onSubmit={submit}>
@@ -75,13 +75,14 @@ export default function Login() {
         </div>
 
         <button className="btn primary" type="submit" disabled={submitting}>
-          {submitting ? 'Entrando…' : 'Entrar al panel'}
+          {submitting ? 'Entrando…' : 'Iniciar sesión'}
         </button>
 
         {msg && <p className="error" role="alert">{msg}</p>}
       </form>
 
       <br />
+      <p>¿Aún no tienes cuenta? <a href="/registro">Regístrate aquí</a>.</p>
       <a href="/">← Volver al catálogo</a>
     </main>
   );
