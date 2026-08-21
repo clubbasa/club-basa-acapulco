@@ -387,8 +387,8 @@ export default function Admin() {
         <input type="checkbox" checked={item.enabled === true} onChange={(e) => toggleCustomerEnabled(item.uid, e.target.checked)} /> Cuenta aprobada
       </label>
       <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
-        <label>Etiqueta</label>
-        <input type="text" defaultValue={item.tag || ''} placeholder="Ej. VIP, Mayorista, Frecuente" onBlur={(e) => { const value = e.target.value.trim(); if (value !== (item.tag || '')) updateCustomerTag(item.uid, value); }} />
+        <label htmlFor={`tag-${item.uid}`}>Etiqueta</label>
+        <input id={`tag-${item.uid}`} type="text" defaultValue={item.tag || ''} placeholder="Ej. VIP, Mayorista, Frecuente" onBlur={(e) => { const value = e.target.value.trim(); if (value !== (item.tag || '')) updateCustomerTag(item.uid, value); }} />
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
         {item.whatsapp && <a className="btn secondary" style={{ flex: 1, fontSize: 13, padding: '9px 10px' }} href={waLinkTo(item.whatsapp, `Hola ${item.name || ''}, te escribimos desde Club BASA.`)} target="_blank" rel="noreferrer">WhatsApp</a>}
