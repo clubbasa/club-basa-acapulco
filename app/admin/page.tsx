@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, doc, getCountFromServer, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
@@ -12,6 +12,7 @@ const AREA_LABELS: Record<string, string> = { menu: 'Menú', beneficios: 'Benefi
 const PAGE_LABELS: Record<string, string> = { '/': 'Inicio', '/blog': 'Blog', '/blog/panquecitos-acapulco': 'Blog · Panquecitos', '/blog/menu-club-basa': 'Blog · Menú', '/blog/envios-acapulco': 'Blog · Envíos' };
 type VisitStats = { totalViews: number; areas: { key: string; label: string; count: number }[]; pages: { key: string; label: string; count: number }[] };
 type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean };
+type ContactMessage = { id: string; name?: string; contact?: string; message?: string; createdAt?: { toDate: () => Date } };
 const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = { promo: 'Promoción', evento: 'Evento', video: 'Video', imagen: 'Imagen' };
 
 const blankProduct: CatalogProduct = { id: '', name: '', category: '', price: 0, description: '', availability: '', active: true, sortOrder: 0, videoProvider: undefined, videoUrl: '', videoStorage: undefined, videoDownloadable: true };
@@ -38,6 +39,7 @@ export default function Admin() {
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotion, setPromotion] = useState<Promotion>(blankPromotion);
   const [selectedPromotionImage, setSelectedPromotionImage] = useState<File | null>(null);
@@ -91,6 +93,16 @@ export default function Admin() {
     setPromotions(await getPromotions());
   };
 
+  const loadContactMessages = async () => {
+    const snap = await getDocs(query(collection(db, 'contacts'), orderBy('createdAt', 'desc'), limit(50)));
+    setContactMessages(snap.docs.map((item) => ({ id: item.id, ...item.data() } as ContactMessage)));
+  };
+
+  const removeContactMessage = async (id: string) => {
+    await deleteDoc(doc(db, 'contacts', id));
+    await loadContactMessages();
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -98,7 +110,7 @@ export default function Admin() {
       try {
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
         setIsAdmin(adminDoc.exists() && adminDoc.data()?.enabled === true);
-        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions()]);
+        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages()]);
       } catch (error) {
         console.error(error);
         setIsAdmin(false);
@@ -330,6 +342,14 @@ export default function Admin() {
         <input type="checkbox" checked={item.enabled === true} onChange={(e) => toggleCustomerEnabled(item.uid, e.target.checked)} /> Cuenta aprobada
       </label>
     </div>)}{customers.length === 0 && <p>Todavía no hay cuentas registradas.</p>}</div></section>
+
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Mensajes de contacto</h2><p>{contactMessages.length} mensajes recientes del formulario de contacto.</p></div><div className="grid3">{contactMessages.map((item) => <div className="card" key={item.id}>
+      <strong>{item.name || 'Sin nombre'}</strong>
+      <p>{item.contact}</p>
+      {item.message && <p>{item.message}</p>}
+      {item.createdAt && <small>{item.createdAt.toDate().toLocaleString('es-MX')}</small>}
+      <div style={{ marginTop: 10 }}><button type="button" className="btn secondary" onClick={() => removeContactMessage(item.id)}>Eliminar</button></div>
+    </div>)}{contactMessages.length === 0 && <p>Todavía no hay mensajes de contacto.</p>}</div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Promociones</h2><p>{promotions.length} elementos. Solo los marcados como activos son visibles en /mi-cuenta para cuentas aprobadas.</p></div><div className="grid3">{promotions.map((item) => <div className="card" key={item.id}>
       <strong>{item.title}</strong><p>{PROMOTION_TYPE_LABELS[item.type]}</p>

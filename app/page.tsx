@@ -51,7 +51,12 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
-    getCatalog()
+    // getCatalog() can hang indefinitely (rather than reject) if Firestore is
+    // unreachable, so race it against a timeout to guarantee we still fall back.
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Firestore catalog request timed out.')), 8000);
+    });
+    Promise.race([getCatalog(), timeout])
       .then(({ products: remoteProducts, categories: remoteCategories }) => {
         if (!mounted) return;
         if (remoteProducts.length) {
