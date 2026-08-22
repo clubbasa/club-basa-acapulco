@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getPromotions, type Promotion } from '@/lib/promotions';
 import { getProductVideoEmbed } from '@/lib/video';
 
-type UserProfile = { name?: string; enabled?: boolean };
+type UserProfile = { name?: string; whatsapp?: string; enabled?: boolean };
 
 export default function MiCuenta() {
   const [user, setUser] = useState<User | null>(null);
@@ -15,6 +15,10 @@ export default function MiCuenta() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editName, setEditName] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -39,6 +43,32 @@ export default function MiCuenta() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (!profile) return;
+    setEditName(profile.name || '');
+    setEditWhatsapp(profile.whatsapp || '');
+  }, [profile]);
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+    setProfileMsg(null);
+    setSavingProfile(true);
+    try {
+      const name = editName.trim();
+      const whatsapp = editWhatsapp.trim();
+      await updateDoc(doc(db, 'users', user.uid), { name, whatsapp });
+      await updateProfile(user, { displayName: name });
+      setProfile((current) => ({ ...current, name, whatsapp }));
+      setProfileMsg({ type: 'ok', text: 'Perfil actualizado.' });
+    } catch (error) {
+      console.error(error);
+      setProfileMsg({ type: 'error', text: 'No se pudo guardar. Intenta de nuevo.' });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
   if (loading) return <main className="container" style={{ padding: '80px 0' }}><h1>Mi cuenta</h1><p>Cargando…</p></main>;
 
   if (!user) return <main className="container" style={{ padding: '80px 0' }}>
@@ -57,6 +87,22 @@ export default function MiCuenta() {
       <h1>Hola{profile?.name ? `, ${profile.name}` : ''}</h1></div>
       <button type="button" className="btn secondary" onClick={() => signOut(auth)}>Cerrar sesión</button>
     </div>
+
+    <section style={{ padding: '25px 0' }}>
+      <div className="sectionHead"><h2>Mi perfil</h2><p>Actualiza tu nombre y tu WhatsApp de contacto.</p></div>
+      <form className="form" style={{ maxWidth: 420 }} onSubmit={saveProfile}>
+        <div className="field">
+          <label htmlFor="profile-name">Nombre</label>
+          <input id="profile-name" type="text" required minLength={2} value={editName} onChange={(e) => setEditName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="profile-whatsapp">WhatsApp</label>
+          <input id="profile-whatsapp" type="tel" required minLength={8} value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} placeholder="744 123 4567" />
+        </div>
+        <button className="btn primary" type="submit" disabled={savingProfile}>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</button>
+        {profileMsg && <p className={profileMsg.type === 'error' ? 'error' : 'small'} role={profileMsg.type === 'error' ? 'alert' : undefined} style={{ marginTop: 10 }}>{profileMsg.text}</p>}
+      </form>
+    </section>
 
     {isAdmin && <div className="card" style={{ margin: '18px 0' }}>Tu cuenta tiene permisos de administrador. <a href="/admin">Ir al panel de administración →</a></div>}
 
