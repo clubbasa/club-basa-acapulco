@@ -33,6 +33,7 @@ export default function Home() {
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const productImageRef = useRef<HTMLDivElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const [showTabsFade, setShowTabsFade] = useState(false);
   const [heroPassed, setHeroPassed] = useState(false);
@@ -190,6 +191,13 @@ export default function Home() {
     setSelectedProduct(product);
     track('view_product', { product: product.id });
   };
+  const openMenu = () => {
+    setMenuOpen(true);
+    // El catálogo tarda un frame en desplegarse; esperamos a que pinte para no hacer scroll a una sección todavía colapsada.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  };
   const clampPan = (pan: { x: number; y: number }, zoom: number) => {
     const max = (zoom - 1) * 160;
     return { x: Math.min(max, Math.max(-max, pan.x)), y: Math.min(max, Math.max(-max, pan.y)) };
@@ -241,7 +249,7 @@ export default function Home() {
         title="Clic: inicio · Doble clic/tap: acceso administrativo"
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
-      <nav className="navlinks"><a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
+      <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir por WhatsApp</a>
       <button type="button" className="themeToggle" aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} onClick={toggleTheme}>
         {theme === 'dark'
@@ -251,7 +259,7 @@ export default function Home() {
       <button type="button" className="navToggle" aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? '✕' : '☰'}</button>
     </div>
     {mobileMenuOpen && <nav id="mobile-menu" className="mobileMenu" aria-label="Menú móvil" onClick={() => setMobileMenuOpen(false)}>
-      <a href="#menu">Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a>
+      <a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a>
     </nav>}
     </header>
 
@@ -260,7 +268,7 @@ export default function Home() {
       <section id="hero" className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
         <span className="eyebrow heroEyebrow">Club BASA Acapulco</span><h1>Sabor que<br/>enamora.<br/>Nutrición que<br/><em>transforma.</em></h1>
         <p>Malteadas, panquecitos, crepas, waffles y opciones para disfrutar tu desayuno, con la nutrición Herbalife que ya conoces.</p>
-        <div className="actions"><a className="btn primary heroCtaPulse" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'hero_order' })}><span className="heroCtaIcon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.9-1.3c1.5.8 3.2 1.3 5.1 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm5.6 14.2c-.2.6-1.2 1.2-1.7 1.3-.4.1-1 .1-1.6-.1-.4-.1-.9-.3-1.5-.5-2.6-1.1-4.3-3.8-4.4-4-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.6.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.7.8.2.1.4.2.4.3.1.2.1.7-.1 1.3z"/></svg></span>Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={() => track('cta_click', { cta: 'hero_menu' })}>Ver menú</a></div>
+        <div className="actions"><a className="btn primary heroCtaPulse" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'hero_order' })}><span className="heroCtaIcon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.9-1.3c1.5.8 3.2 1.3 5.1 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm5.6 14.2c-.2.6-1.2 1.2-1.7 1.3-.4.1-1 .1-1.6-.1-.4-.1-.9-.3-1.5-.5-2.6-1.1-4.3-3.8-4.4-4-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.6.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.7.8.2.1.4.2.4.3.1.2.1.7-.1 1.3z"/></svg></span>Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={(event) => { event.preventDefault(); track('cta_click', { cta: 'hero_menu' }); openMenu(); }}>Ver menú</a></div>
         <p className="heroCtaNote"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>Confirmamos tu pedido por WhatsApp en minutos</p>
         <div className="heroTrust"><span>◯ <b>Sin harinas</b><small>ni aceite</small></span><span>◉ <b>Altos en</b><small>proteína</small></span><span>♡ <b>Hechos con</b><small>nutrición Herbalife</small></span></div>
       </div></div>
@@ -307,7 +315,7 @@ export default function Home() {
             </div>
           </div>
           <p className="small" style={{ marginTop: 22, color: 'var(--muted)' }}>Además, en tu primera compra del six te regalamos café de grano arábica.</p>
-          <div style={{ marginTop: 20, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_click', { cta: 'breakfast_order' })}>Armar mi desayuno</a></div>
+          <div style={{ marginTop: 20, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={(event) => { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); openMenu(); }}>Armar mi desayuno</a></div>
         </div>
       </ScrollScene>
 
@@ -333,12 +341,12 @@ export default function Home() {
               <h3>Especialidades</h3><p>Rollitos salados y más, sobre pedido.</p>
             </div>
           </div>
-          <div style={{ marginTop: 32, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_click', { cta: 'menu_explore' })}>Ver todo el menú</a></div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}><button type="button" className="btn primary" aria-expanded={menuOpen} aria-controls="menu" onClick={() => { track('cta_click', { cta: 'menu_explore' }); if (menuOpen) setMenuOpen(false); else openMenu(); }}>{menuOpen ? 'Ocultar menú' : 'Ver todo el menú'}</button></div>
         </div>
       </ScrollScene>
 
-      {/* Catálogo completo — SIN scroll-snap, navegación libre y rápida (sin cambios funcionales) */}
-      <section id="menu"><Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
+      {/* Catálogo completo — SIN scroll-snap, navegación libre y rápida. Colapsado por defecto: se despliega desde cualquier CTA "Ver menú" del sitio (todas llaman a openMenu()) y se repliega solo con el botón de la Escena 4. La <section id="menu"> se mantiene siempre en el DOM para que el scroll a #menu tenga un destino estable incluso colapsada. */}
+      <section id="menu" style={menuOpen ? undefined : { padding: 0 }}>{menuOpen && <Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
         <div className="categoryTabsWrap"><div className="categoryTabs" ref={categoryTabsRef} role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.filter((category) => !isInternalCategory(category.id)).map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>{showTabsFade && <div className="categoryTabsFade" aria-hidden="true">›</div>}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
@@ -346,7 +354,7 @@ export default function Home() {
           <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
         </article>)}</div>
         {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
-      </div></Reveal></section>
+      </div></Reveal>}</section>
 
       {/* Escena 5 — Experiencia Club BASA: solo fotos reales, sin testimonios inventados */}
       <ScrollScene id="experiencia">
@@ -379,7 +387,7 @@ export default function Home() {
           </div>
           <div className="actions" style={{ justifyContent: 'center' }}>
             <a className="btn primary" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'final_order' })}>◔ &nbsp;Pedir ahora</a>
-            <a className="btn secondary" href="#menu" onClick={() => track('cta_click', { cta: 'final_menu' })}>Ver menú</a>
+            <a className="btn secondary" href="#menu" onClick={(event) => { event.preventDefault(); track('cta_click', { cta: 'final_menu' }); openMenu(); }}>Ver menú</a>
           </div>
 
           <div id="envios" className="sceneSub">
