@@ -226,8 +226,9 @@ export default function Home() {
     btn.classList.add('shareBtnSent');
     setTimeout(() => btn.classList.remove('shareBtnSent'), 700);
     const text = `Mira ${product.name} de Club BASA Acapulco${product.price ? ` — $${product.price}` : ''}: ${siteUrl}`;
+    const isWindowsDesktop = window.innerWidth > 850 && /Windows/i.test(navigator.userAgent);
     try {
-      if (navigator.share && window.innerWidth <= 850) await navigator.share({ title: 'Club BASA Acapulco', text, url: siteUrl });
+      if (navigator.share && !isWindowsDesktop) await navigator.share({ title: 'Club BASA Acapulco', text, url: siteUrl });
       else await navigator.clipboard.writeText(text);
     } catch { /* el usuario canceló el cuadro nativo de compartir */ }
     track('share_product', { product: product.id });
