@@ -311,28 +311,27 @@ export default function Home() {
         </div>
       </ScrollScene>
 
-      {/* Escena 4 — Descubrir el menú: mapa de categorías reales para aumentar ticket promedio, no el catálogo completo */}
+      {/* Escena 4 — Descubrir el menú: mapa de categorías reales para aumentar ticket promedio, no el catálogo completo. Se quita panquecitos de esta grilla (ya fue protagonista en la Escena 2) y se usa una grilla de 4 columnas, más densa que la de 3 de la Escena 3, para que no se sienta igual escena tras escena. */}
       <ScrollScene id="categorias">
         <div className="container">
-          <div className="sectionHead"><h2>Y hay mucho más para pedir</h2><p>Panquecitos, malteadas, waffles, crepas y especialidades.</p></div>
-          <div className="grid3">
+          <div className="sectionHead"><h2>Y hay mucho más para pedir</h2><p>Malteadas, waffles, crepas y especialidades.</p></div>
+          <div className="grid4">
             <div className="card">
-              {sixProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={sixProduct.image} alt="Panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
-              <h3>Panquecitos</h3><p>{sixProduct?.price ? `Desde $${sixProduct.price}` : 'Consultar'}</p>
-            </div>
-            <div className="card">
-              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
               <h3>Malteadas</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
-              {waffleProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={waffleProduct.image} alt="Waffle Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {waffleProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={waffleProduct.image} alt="Waffle Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
               <h3>Waffles</h3><p>{waffleProduct?.price ? `$${waffleProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
-              {crepaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={crepaProduct.image} alt="Crepa Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {crepaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={crepaProduct.image} alt="Crepa Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
               <h3>Crepas</h3><p>{crepaProduct?.price ? `$${crepaProduct.price}` : 'Consultar'}</p>
             </div>
-            <div className="card"><div className="icon">🌯</div><h3>Especialidades</h3><p>Rollitos salados y más, sobre pedido.</p></div>
+            <div className="card">
+              {specialProduct?.image ? <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={specialProduct.image} alt="Especialidades Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div> : <div className="icon">🌯</div>}
+              <h3>Especialidades</h3><p>Rollitos salados y más, sobre pedido.</p>
+            </div>
           </div>
           <div style={{ marginTop: 32, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={() => track('cta_click', { cta: 'menu_explore' })}>Ver todo el menú</a></div>
         </div>
