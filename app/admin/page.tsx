@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
+import { waLinkTo } from '@/lib/whatsapp';
 
 const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', desayuno: 'Arma tu desayuno', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
 const CTA_LABELS: Record<string, string> = { header_order: 'Header · Pedir', hero_order: 'Hero · Pedir ahora', hero_menu: 'Hero · Ver menú', six_order: 'Six · Quiero mi six', breakfast_order: 'Desayuno · Armar', menu_explore: 'Categorías · Ver menú', final_order: 'Cierre · Pedir', final_menu: 'Cierre · Ver menú', sticky_order: 'Sticky móvil · Pedir', envios_cotizar: 'Envíos · Cotizar', experiencia_contacto: 'Experiencia · WhatsApp' };
@@ -21,7 +22,7 @@ type VisitStats = {
   addToCarts: { key: string; label: string; count: number }[];
   beginOrders: number;
 };
-type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean };
+type CustomerAccount = { uid: string; name?: string; email?: string; whatsapp?: string; enabled?: boolean; tag?: string };
 type ContactMessage = { id: string; name?: string; contact?: string; message?: string; createdAt?: { toDate: () => Date } };
 const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = { promo: 'Promoción', evento: 'Evento', video: 'Video', imagen: 'Imagen' };
 
@@ -49,6 +50,7 @@ export default function Admin() {
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
+  const [customerTagFilter, setCustomerTagFilter] = useState('Todos');
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotion, setPromotion] = useState<Promotion>(blankPromotion);
@@ -111,6 +113,11 @@ export default function Admin() {
 
   const toggleCustomerEnabled = async (uid: string, enabled: boolean) => {
     await updateDoc(doc(db, 'users', uid), { enabled });
+    await loadCustomers();
+  };
+
+  const updateCustomerTag = async (uid: string, tag: string) => {
+    await updateDoc(doc(db, 'users', uid), { tag });
     await loadCustomers();
   };
 
@@ -343,6 +350,9 @@ export default function Admin() {
   if (!user) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Inicia sesión para continuar.</p><a className="btn primary" href="/login">Entrar</a></main>;
   if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><p>Si eres cliente, tu contenido exclusivo está en <a href="/mi-cuenta">Mi cuenta</a>.</p><div style={{ display: 'flex', gap: 10 }}><a className="btn primary" href="/mi-cuenta">Ir a Mi cuenta</a><a className="btn secondary" href="/">Volver al catálogo</a></div></main>;
 
+  const customerTags = Array.from(new Set(customers.map((item) => item.tag).filter((tag): tag is string => !!tag))).sort();
+  const visibleCustomers = customerTagFilter === 'Todos' ? customers : customers.filter((item) => item.tag === customerTagFilter);
+
   return <main className="container" style={{ padding: '50px 0 90px' }}>
     <span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
@@ -364,14 +374,27 @@ export default function Admin() {
       </> : <p>Sin datos todavía.</p>}
     </div></section>
 
-    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Usuarios</h2><p>{customers.length} cuentas registradas. Aprueba o revoca el acceso a contenido exclusivo.</p></div><div className="grid3">{customers.map((item) => <div className="card" key={item.uid}>
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Usuarios</h2><p>{customers.length} cuentas registradas. Aprueba o revoca el acceso a contenido exclusivo, etiquétalas para organizarlas y contáctalas directo.</p></div>
+      {customerTags.length > 0 && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        <button type="button" className="btn" style={customerTagFilter === 'Todos' ? { background: 'var(--brand)', color: '#fff' } : { background: '#fff', border: '1px solid var(--line)' }} onClick={() => setCustomerTagFilter('Todos')}>Todos ({customers.length})</button>
+        {customerTags.map((tag) => <button type="button" key={tag} className="btn" style={customerTagFilter === tag ? { background: 'var(--brand)', color: '#fff' } : { background: '#fff', border: '1px solid var(--line)' }} onClick={() => setCustomerTagFilter(tag)}>{tag} ({customers.filter((item) => item.tag === tag).length})</button>)}
+      </div>}
+      <div className="grid3">{visibleCustomers.map((item) => <div className="card" key={item.uid}>
       <strong>{item.name || 'Sin nombre'}</strong>
       <p>{item.email}</p>
       {item.whatsapp && <p>{item.whatsapp}</p>}
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}>
         <input type="checkbox" checked={item.enabled === true} onChange={(e) => toggleCustomerEnabled(item.uid, e.target.checked)} /> Cuenta aprobada
       </label>
-    </div>)}{customers.length === 0 && <p>Todavía no hay cuentas registradas.</p>}</div></section>
+      <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
+        <label htmlFor={`tag-${item.uid}`}>Etiqueta</label>
+        <input id={`tag-${item.uid}`} type="text" defaultValue={item.tag || ''} placeholder="Ej. VIP, Mayorista, Frecuente" onBlur={(e) => { const value = e.target.value.trim(); if (value !== (item.tag || '')) updateCustomerTag(item.uid, value); }} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        {item.whatsapp && <a className="btn secondary" style={{ flex: 1, fontSize: 13, padding: '9px 10px' }} href={waLinkTo(item.whatsapp, `Hola ${item.name || ''}, te escribimos desde Club BASA.`)} target="_blank" rel="noreferrer">WhatsApp</a>}
+        {item.email && <a className="btn secondary" style={{ flex: 1, fontSize: 13, padding: '9px 10px' }} href={`mailto:${item.email}`}>Correo</a>}
+      </div>
+    </div>)}{visibleCustomers.length === 0 && <p>{customers.length === 0 ? 'Todavía no hay cuentas registradas.' : 'Ningún usuario tiene esta etiqueta.'}</p>}</div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Mensajes de contacto</h2><p>{contactMessages.length} mensajes recientes del formulario de contacto.</p></div><div className="grid3">{contactMessages.map((item) => <div className="card" key={item.id}>
       <strong>{item.name || 'Sin nombre'}</strong>
