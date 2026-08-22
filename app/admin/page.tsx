@@ -151,6 +151,13 @@ export default function Admin() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    // Un cliente que llega aquí (p. ej. porque /login siempre manda a /admin
+    // primero) no necesita ver un mensaje de "sin permisos" — se le manda
+    // directo al panel que sí le corresponde.
+    if (!loading && user && !isAdmin) window.location.assign('/mi-cuenta');
+  }, [loading, user, isAdmin]);
+
   useEffect(() => () => {
     if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
   }, [imagePreview]);
@@ -348,7 +355,7 @@ export default function Admin() {
 
   if (loading) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Cargando permisos…</p></main>;
   if (!user) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Inicia sesión para continuar.</p><a className="btn primary" href="/login">Entrar</a></main>;
-  if (!isAdmin) return <main className="container" style={{ padding: '80px 0', maxWidth: 760 }}><span className="eyebrow">Acceso protegido</span><h1>Cuenta sin permisos de administración</h1><p>Tu cuenta está autenticada, pero no tiene el documento <code>admins/{user.uid}</code> con <code>enabled: true</code> en Firestore.</p><p>Si eres cliente, tu contenido exclusivo está en <a href="/mi-cuenta">Mi cuenta</a>.</p><div style={{ display: 'flex', gap: 10 }}><a className="btn primary" href="/mi-cuenta">Ir a Mi cuenta</a><a className="btn secondary" href="/">Volver al catálogo</a></div></main>;
+  if (!isAdmin) return <main className="container" style={{ padding: '80px 0' }}><h1>Panel de administración</h1><p>Redirigiendo…</p></main>;
 
   const customerTags = Array.from(new Set(customers.map((item) => item.tag).filter((tag): tag is string => !!tag))).sort();
   const visibleCustomers = customerTagFilter === 'Todos' ? customers : customers.filter((item) => item.tag === customerTagFilter);
