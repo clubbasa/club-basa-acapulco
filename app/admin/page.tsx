@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, slugifyCatalog, type CatalogCategory, type CatalogProduct, uploadProductImage } from '@/lib/catalog';
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
@@ -354,7 +354,10 @@ export default function Admin() {
   const visibleCustomers = customerTagFilter === 'Todos' ? customers : customers.filter((item) => item.tag === customerTagFilter);
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
-    <span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+      <div><span className="eyebrow">Admin • Firestore + Cloudflare R2</span><h1>Catálogo Club BASA</h1><p>Productos, categorías, precios, imágenes y videos se administran desde aquí.</p></div>
+      <button type="button" className="btn secondary" onClick={() => signOut(auth)}>Cerrar sesión</button>
+    </div>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
 
     <section style={{ padding: '25px 0' }}><div className="card">

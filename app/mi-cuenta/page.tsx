@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getPromotions, type Promotion } from '@/lib/promotions';
 import { getProductVideoEmbed } from '@/lib/video';
@@ -52,8 +52,11 @@ export default function MiCuenta() {
   const approved = isAdmin || profile?.enabled === true;
 
   return <main className="container" style={{ padding: '50px 0 90px' }}>
-    <span className="eyebrow">Club BASA • Mi cuenta</span>
-    <h1>Hola{profile?.name ? `, ${profile.name}` : ''}</h1>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+      <div><span className="eyebrow">Club BASA • Mi cuenta</span>
+      <h1>Hola{profile?.name ? `, ${profile.name}` : ''}</h1></div>
+      <button type="button" className="btn secondary" onClick={() => signOut(auth)}>Cerrar sesión</button>
+    </div>
 
     {isAdmin && <div className="card" style={{ margin: '18px 0' }}>Tu cuenta tiene permisos de administrador. <a href="/admin">Ir al panel de administración →</a></div>}
 
