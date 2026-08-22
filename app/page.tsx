@@ -367,7 +367,7 @@ export default function Home() {
           <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
         </article>)}</div>
       </div></Reveal>}</section>
-      {items.length > 0 && <div className="container"><div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div></div>}
+      {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
 
       {/* Escena 5 — Experiencia Club BASA: solo fotos reales, sin testimonios inventados */}
       <ScrollScene id="experiencia">
