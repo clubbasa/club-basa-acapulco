@@ -229,7 +229,7 @@ export default function Home() {
     const isWindowsDesktop = window.innerWidth > 850 && /Windows/i.test(navigator.userAgent);
     try {
       if (navigator.share && !isWindowsDesktop) await navigator.share({ title: 'Club BASA Acapulco', text, url: siteUrl });
-      else await navigator.clipboard.writeText(text);
+      else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
     } catch { /* el usuario canceló el cuadro nativo de compartir */ }
     track('share_product', { product: product.id });
   };
