@@ -7,9 +7,11 @@ import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/hooks/useCart';
+import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
 import ContactForm from '@/components/ContactForm';
+import VariantPicker from '@/components/VariantPicker';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
@@ -23,7 +25,7 @@ export default function Home() {
   const [categories, setCategories] = useState(getFallbackCategories());
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
-  const { lines: cartLines, subtotal, count: cartCount, addSimple, setQty: setCartQty } = useCart(products);
+  const { lines: cartLines, subtotal, count: cartCount, addSimple, addVariant, setQty: setCartQty } = useCart(products);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const closedViaBackRef = useRef(false);
   // zoom+pan live in one state object so the wheel handler below can update
@@ -170,6 +172,7 @@ export default function Home() {
     .filter((p) => p.id !== 'coffee')
     .filter((p) => activeCategory === 'Todos' || p.category === activeCategory), [products, activeCategory]);
   const quantityFor = (productId: string) => cartLines.find((line) => line.kind === 'simple' && line.productId === productId)?.qty || 0;
+  const variantQtyFor = (productId: string) => cartLines.filter((line) => line.kind === 'variant' && line.productId === productId).reduce((sum, line) => sum + line.qty, 0);
   const addProduct = (product: CatalogProduct, delta: number) => {
     if (delta > 0) { addSimple(product, delta); return; }
     const line = cartLines.find((l) => l.kind === 'simple' && l.productId === product.id);
@@ -223,6 +226,7 @@ export default function Home() {
   };
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`Mira el menú de Club BASA Acapulco: ${siteUrl}`)}`;
   const selectedVideo = selectedProduct ? getProductVideoEmbed(selectedProduct.videoProvider, selectedProduct.videoUrl) : null;
+  const selectedVariantGroup = selectedProduct ? getVariantGroup(selectedProduct.id) : undefined;
 
   const handleLogoDoubleClick = () => {
     track('logo_admin_login');
@@ -352,7 +356,7 @@ export default function Home() {
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
-          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
+          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div>{getVariantGroup(product.id) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{variantQtyFor(product.id) > 0 ? `${variantQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : <div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>}
         </article>)}</div>
       </div></Reveal>}</section>
       {cartLines.length > 0 && <div className="cart"><div><strong>{cartCount} productos</strong><br/><span>${subtotal} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: subtotal }); window.location.href = waLink(buildOrder(cartLines)); }}>Enviar pedido por WhatsApp</button></div>}
@@ -462,8 +466,14 @@ export default function Home() {
             </div>
           </div>}
 
-          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => addProduct(selectedProduct, -1)}>−</button><span>{quantityFor(selectedProduct.id)}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { addProduct(selectedProduct, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
-          <button className="btn primary productModalAdd" onClick={() => addProduct(selectedProduct, 1)}>Agregar al carrito</button>
+          {selectedVariantGroup ? <VariantPicker product={selectedProduct} group={selectedVariantGroup} onAdd={(option, qty) => {
+            addVariant(selectedProduct.id, option.id, `${selectedProduct.name} - ${option.label}`, resolveVariantPrice(selectedProduct, option), qty);
+            track('add_to_cart', { product: selectedProduct.id, variant: option.id });
+            setSelectedProduct(null);
+          }} /> : <>
+            <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => addProduct(selectedProduct, -1)}>−</button><span>{quantityFor(selectedProduct.id)}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { addProduct(selectedProduct, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
+            <button className="btn primary productModalAdd" onClick={() => addProduct(selectedProduct, 1)}>Agregar al carrito</button>
+          </>}
         </div>
       </section>
     </div>}
