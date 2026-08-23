@@ -32,7 +32,7 @@ export const COMBOS: ComboDefinition[] = [
       {
         id: 'complemento',
         title: 'Elige tu complemento',
-        required: true,
+        required: false,
         options: panquecitoFlavorOptions,
       },
       {
