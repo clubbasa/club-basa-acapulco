@@ -8,10 +8,12 @@ import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/hooks/useCart';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
+import { getCombo, buildComboLine } from '@/lib/combos';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
 import ContactForm from '@/components/ContactForm';
 import VariantPicker from '@/components/VariantPicker';
+import ComboBuilder from '@/components/ComboBuilder';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
@@ -25,8 +27,9 @@ export default function Home() {
   const [categories, setCategories] = useState(getFallbackCategories());
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
-  const { lines: cartLines, subtotal, count: cartCount, addSimple, addVariant, setQty: setCartQty } = useCart(products);
+  const { lines: cartLines, subtotal, count: cartCount, addSimple, addVariant, addCombo, setQty: setCartQty } = useCart(products);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const [openComboId, setOpenComboId] = useState<string | null>(null);
   const closedViaBackRef = useRef(false);
   // zoom+pan live in one state object so the wheel handler below can update
   // both in a single, pure setState call (see react-doctor/no-impure-state-updater).
@@ -306,21 +309,21 @@ export default function Home() {
         <div className="container">
           <div className="sectionHead"><h2>Arma tu desayuno</h2><p>Completa tu six con una bebida preparada al momento.</p></div>
           <div className="grid3">
-            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Malteada" onClick={() => shakeProduct && openProduct(shakeProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && shakeProduct) { event.preventDefault(); openProduct(shakeProduct); } }}>
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con malteada" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
               {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
               <h3>Malteada</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
             </div>
-            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Té" onClick={() => teaProduct && openProduct(teaProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && teaProduct) { event.preventDefault(); openProduct(teaProduct); } }}>
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con té" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
               {teaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={teaProduct.image} alt="Té Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
               <h3>Té</h3><p>{teaProduct?.price ? `$${teaProduct.price}` : 'Consultar'}</p>
             </div>
-            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Ver Aloe" onClick={() => aloeProduct && openProduct(aloeProduct)} onKeyDown={(event) => { if ((event.key === 'Enter' || event.key === ' ') && aloeProduct) { event.preventDefault(); openProduct(aloeProduct); } }}>
+            <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con aloe" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
               {aloeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={aloeProduct.image} alt="Aloe Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
               <h3>Aloe</h3><p>{aloeProduct?.price ? `$${aloeProduct.price}` : 'Consultar'}</p>
             </div>
           </div>
           <p className="small" style={{ marginTop: 22, color: 'var(--muted)' }}>Además, en tu primera compra del six te regalamos café de grano arábica.</p>
-          <div style={{ marginTop: 20, textAlign: 'center' }}><a className="btn primary" href="#menu" onClick={(event) => { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); openMenu(); }}>Armar mi desayuno</a></div>
+          <div style={{ marginTop: 20, textAlign: 'center' }}><button type="button" className="btn primary" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }}>Armar mi desayuno</button></div>
         </div>
       </ScrollScene>
 
@@ -477,5 +480,18 @@ export default function Home() {
         </div>
       </section>
     </div>}
+
+    {openComboId && getCombo(openComboId) && <ComboBuilder
+      products={products}
+      combo={getCombo(openComboId)!}
+      onClose={() => setOpenComboId(null)}
+      onAdd={(selections) => {
+        const combo = getCombo(openComboId)!;
+        const line = buildComboLine(products, combo, selections);
+        addCombo(line.comboId, line.name, line.unitPrice, line.components);
+        track('add_to_cart', { product: combo.id });
+        setOpenComboId(null);
+      }}
+    />}
   </>;
 }
