@@ -20,6 +20,7 @@ import ContactForm from '@/components/ContactForm';
 import VariantPicker from '@/components/VariantPicker';
 import ComboBuilder from '@/components/ComboBuilder';
 import CartDrawer from '@/components/CartDrawer';
+import Footer from '@/components/Footer';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
@@ -520,6 +521,8 @@ export default function Home() {
         </div>
       </ScrollScene>
     </main>
+
+    <Footer/>
 
     {/* CTA sticky móvil: solo tras salir del hero, y solo si el carrito flotante no está ya visible (no compiten por espacio) */}
     {heroPassed && cartLines.length === 0 && <a

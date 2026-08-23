@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Footer from '@/components/Footer';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -41,6 +42,7 @@ export default function Login() {
   }
 
   return (
+    <>
     <main className="container" style={{ padding: '80px 0', maxWidth: 520 }}>
       <span className="eyebrow">Club BASA • Mi cuenta</span>
       <h1>Inicia sesión</h1>
@@ -85,5 +87,7 @@ export default function Login() {
       <p>¿Aún no tienes cuenta? <a href="/registro">Regístrate aquí</a>.</p>
       <a href="/">← Volver al catálogo</a>
     </main>
+    <Footer/>
+    </>
   );
 }
