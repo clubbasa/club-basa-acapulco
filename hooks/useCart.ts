@@ -7,8 +7,10 @@ import {
   clearCart,
   computeItemCount,
   computeSubtotal,
+  duplicateLine,
   loadCart,
   removeLine,
+  replaceLine,
   saveCart,
   updateQty,
   type CartLine,
@@ -47,6 +49,15 @@ export function useCart(products: CatalogProduct[]) {
   const setQty = (lineId: string, qty: number) => setLines((current) => updateQty(current, lineId, qty));
   const remove = (lineId: string) => setLines((current) => removeLine(current, lineId));
   const clear = () => setLines(clearCart());
+  const duplicate = (lineId: string) => setLines((current) => duplicateLine(current, lineId));
+
+  const replaceVariant = (oldLineId: string, productId: string, variantId: string, name: string, unitPrice: number, qty: number) => {
+    setLines((current) => replaceLine(current, oldLineId, { kind: 'variant', productId, variantId, name, unitPrice }, qty));
+  };
+
+  const replaceCombo = (oldLineId: string, comboId: string, name: string, unitPrice: number, components: ComboComponent[], qty: number) => {
+    setLines((current) => replaceLine(current, oldLineId, { kind: 'combo', comboId, name, unitPrice, components }, qty));
+  };
 
   return {
     lines,
@@ -58,5 +69,8 @@ export function useCart(products: CatalogProduct[]) {
     setQty,
     remove,
     clear,
+    duplicate,
+    replaceVariant,
+    replaceCombo,
   };
 }

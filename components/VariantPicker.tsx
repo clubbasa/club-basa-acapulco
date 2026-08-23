@@ -7,12 +7,13 @@ import { resolveVariantPrice, type VariantGroup, type VariantOption } from '@/li
 type Props = {
   product: CatalogProduct;
   group: VariantGroup;
+  initial?: { variantId: string; qty: number };
   onAdd: (option: VariantOption, qty: number) => void;
 };
 
-export default function VariantPicker({ product, group, onAdd }: Props) {
-  const [selectedId, setSelectedId] = useState(group.options[0]?.id ?? '');
-  const [pendingQty, setPendingQty] = useState(1);
+export default function VariantPicker({ product, group, initial, onAdd }: Props) {
+  const [selectedId, setSelectedId] = useState(initial?.variantId ?? group.options[0]?.id ?? '');
+  const [pendingQty, setPendingQty] = useState(initial?.qty ?? 1);
   const selectedOption = group.options.find((option) => option.id === selectedId) ?? group.options[0];
   const unitPrice = selectedOption ? resolveVariantPrice(product, selectedOption) : product.price;
 
@@ -36,7 +37,7 @@ export default function VariantPicker({ product, group, onAdd }: Props) {
         <span>{pendingQty}</span>
         <button type="button" aria-label="Aumentar cantidad" onClick={() => setPendingQty((qty) => qty + 1)}>+</button>
       </div>
-      <button type="button" className="btn primary productModalAdd" onClick={() => selectedOption && onAdd(selectedOption, pendingQty)}>Agregar — ${unitPrice * pendingQty}</button>
+      <button type="button" className="btn primary productModalAdd" onClick={() => selectedOption && onAdd(selectedOption, pendingQty)}>{initial ? 'Guardar cambios' : 'Agregar'} — ${unitPrice * pendingQty}</button>
     </div>
   );
 }

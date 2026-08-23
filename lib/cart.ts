@@ -33,6 +33,17 @@ export function updateQty(lines: CartLine[], lineId: string, qty: number): CartL
   return lines.map((line) => (line.lineId === lineId ? { ...line, qty } : line));
 }
 
+export function duplicateLine(lines: CartLine[], lineId: string): CartLine[] {
+  const target = lines.find((line) => line.lineId === lineId);
+  if (!target) return lines;
+  const clone = { ...target, lineId: `${target.lineId}#${Date.now()}`, addedAt: Date.now(), qty: 1 } as CartLine;
+  return [...lines, clone];
+}
+
+export function replaceLine(lines: CartLine[], oldLineId: string, newLine: NewCartLine, qty: number): CartLine[] {
+  return addLine(lines.filter((line) => line.lineId !== oldLineId), newLine, qty);
+}
+
 export function removeLine(lines: CartLine[], lineId: string): CartLine[] {
   return lines.filter((line) => line.lineId !== lineId);
 }

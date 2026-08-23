@@ -8,12 +8,14 @@ import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/hooks/useCart';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
-import { getCombo, buildComboLine } from '@/lib/combos';
+import { getCombo, buildComboLine, type ComboSlotOption } from '@/lib/combos';
+import type { CartLine, VariantCartLine } from '@/lib/cart';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
 import ContactForm from '@/components/ContactForm';
 import VariantPicker from '@/components/VariantPicker';
 import ComboBuilder from '@/components/ComboBuilder';
+import CartDrawer from '@/components/CartDrawer';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://menu.club-basa.com';
@@ -27,9 +29,17 @@ export default function Home() {
   const [categories, setCategories] = useState(getFallbackCategories());
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
-  const { lines: cartLines, subtotal, count: cartCount, addSimple, addVariant, addCombo, setQty: setCartQty } = useCart(products);
+  const {
+    lines: cartLines, subtotal, count: cartCount,
+    addSimple, addVariant, addCombo, setQty: setCartQty,
+    remove: removeCartLine, clear: clearCartLines, duplicate: duplicateCartLine,
+    replaceVariant, replaceCombo,
+  } = useCart(products);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [openComboId, setOpenComboId] = useState<string | null>(null);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [editingComboSelections, setEditingComboSelections] = useState<Record<string, ComboSlotOption | null> | null>(null);
   const closedViaBackRef = useRef(false);
   // zoom+pan live in one state object so the wheel handler below can update
   // both in a single, pure setState call (see react-doctor/no-impure-state-updater).
@@ -148,6 +158,24 @@ export default function Home() {
   }, [selectedProduct]);
 
   useEffect(() => {
+    if (!selectedProduct) setEditingLineId(null);
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    if (!cartDrawerOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setCartDrawerOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [cartDrawerOpen]);
+
+  useEffect(() => {
     const hero = document.getElementById('hero');
     if (!hero) return;
     const io = new IntersectionObserver(([entry]) => setHeroPassed(!entry.isIntersecting), { threshold: 0 });
@@ -180,6 +208,43 @@ export default function Home() {
     if (delta > 0) { addSimple(product, delta); return; }
     const line = cartLines.find((l) => l.kind === 'simple' && l.productId === product.id);
     if (line) setCartQty(line.lineId, line.qty + delta);
+  };
+  const incrementLine = (lineId: string) => {
+    const line = cartLines.find((l) => l.lineId === lineId);
+    if (line) setCartQty(lineId, line.qty + 1);
+  };
+  const decrementLine = (lineId: string) => {
+    const line = cartLines.find((l) => l.lineId === lineId);
+    if (line) setCartQty(lineId, line.qty - 1);
+  };
+  const handleCheckout = () => {
+    track('whatsapp_order', { value: subtotal });
+    window.location.href = waLink(buildOrder(cartLines));
+  };
+  const handleEditLine = (line: CartLine) => {
+    if (line.kind === 'variant') {
+      const product = products.find((p) => p.id === line.productId);
+      if (!product) return;
+      setEditingLineId(line.lineId);
+      setSelectedProduct(product);
+      setCartDrawerOpen(false);
+      return;
+    }
+    if (line.kind === 'combo') {
+      const combo = getCombo(line.comboId);
+      if (!combo) return;
+      const selections: Record<string, ComboSlotOption | null> = {};
+      combo.slots.forEach((slot) => {
+        const component = line.components.find((c) => c.slotId === slot.id);
+        selections[slot.id] = component
+          ? slot.options.find((option) => option.productId === component.productId && option.variantId === component.variantId) ?? null
+          : null;
+      });
+      setEditingLineId(line.lineId);
+      setEditingComboSelections(selections);
+      setOpenComboId(line.comboId);
+      setCartDrawerOpen(false);
+    }
   };
   const openProduct = (product: CatalogProduct) => {
     setSelectedProduct(product);
@@ -230,6 +295,7 @@ export default function Home() {
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`Mira el menú de Club BASA Acapulco: ${siteUrl}`)}`;
   const selectedVideo = selectedProduct ? getProductVideoEmbed(selectedProduct.videoProvider, selectedProduct.videoUrl) : null;
   const selectedVariantGroup = selectedProduct ? getVariantGroup(selectedProduct.id) : undefined;
+  const editingVariantLine = editingLineId ? cartLines.find((line): line is VariantCartLine => line.lineId === editingLineId && line.kind === 'variant') : undefined;
 
   const handleLogoDoubleClick = () => {
     track('logo_admin_login');
@@ -362,7 +428,6 @@ export default function Home() {
           <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div>{getVariantGroup(product.id) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{variantQtyFor(product.id) > 0 ? `${variantQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : <div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>}
         </article>)}</div>
       </div></Reveal>}</section>
-      {cartLines.length > 0 && <div className="cart"><div><strong>{cartCount} productos</strong><br/><span>${subtotal} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: subtotal }); window.location.href = waLink(buildOrder(cartLines)); }}>Enviar pedido por WhatsApp</button></div>}
 
       {/* Escena 5 — Experiencia Club BASA: solo fotos reales, sin testimonios inventados */}
       <ScrollScene id="experiencia">
@@ -469,13 +534,24 @@ export default function Home() {
             </div>
           </div>}
 
-          {selectedVariantGroup ? <VariantPicker product={selectedProduct} group={selectedVariantGroup} onAdd={(option, qty) => {
-            addVariant(selectedProduct.id, option.id, `${selectedProduct.name} - ${option.label}`, resolveVariantPrice(selectedProduct, option), qty);
-            track('add_to_cart', { product: selectedProduct.id, variant: option.id });
-            setSelectedProduct(null);
-          }} /> : <>
+          {selectedVariantGroup ? <VariantPicker
+            product={selectedProduct}
+            group={selectedVariantGroup}
+            initial={editingVariantLine ? { variantId: editingVariantLine.variantId, qty: editingVariantLine.qty } : undefined}
+            onAdd={(option, qty) => {
+              if (editingLineId) {
+                replaceVariant(editingLineId, selectedProduct.id, option.id, `${selectedProduct.name} - ${option.label}`, resolveVariantPrice(selectedProduct, option), qty);
+              } else {
+                addVariant(selectedProduct.id, option.id, `${selectedProduct.name} - ${option.label}`, resolveVariantPrice(selectedProduct, option), qty);
+              }
+              track('add_to_cart', { product: selectedProduct.id, variant: option.id });
+              setSelectedProduct(null);
+              setEditingLineId(null);
+              setCartDrawerOpen(true);
+            }}
+          /> : <>
             <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => addProduct(selectedProduct, -1)}>−</button><span>{quantityFor(selectedProduct.id)}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { addProduct(selectedProduct, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
-            <button className="btn primary productModalAdd" onClick={() => addProduct(selectedProduct, 1)}>Agregar al carrito</button>
+            <button className="btn primary productModalAdd" onClick={() => { addProduct(selectedProduct, 1); track('add_to_cart', { product: selectedProduct.id }); setSelectedProduct(null); setCartDrawerOpen(true); }}>Agregar al carrito</button>
           </>}
         </div>
       </section>
@@ -484,14 +560,39 @@ export default function Home() {
     {openComboId && getCombo(openComboId) && <ComboBuilder
       products={products}
       combo={getCombo(openComboId)!}
-      onClose={() => setOpenComboId(null)}
+      initialSelections={editingComboSelections ?? undefined}
+      onClose={() => { setOpenComboId(null); setEditingLineId(null); setEditingComboSelections(null); }}
       onAdd={(selections) => {
         const combo = getCombo(openComboId)!;
         const line = buildComboLine(products, combo, selections);
-        addCombo(line.comboId, line.name, line.unitPrice, line.components);
+        if (editingLineId) {
+          const originalQty = cartLines.find((l) => l.lineId === editingLineId)?.qty ?? 1;
+          replaceCombo(editingLineId, line.comboId, line.name, line.unitPrice, line.components, originalQty);
+        } else {
+          addCombo(line.comboId, line.name, line.unitPrice, line.components);
+        }
         track('add_to_cart', { product: combo.id });
         setOpenComboId(null);
+        setEditingLineId(null);
+        setEditingComboSelections(null);
+        setCartDrawerOpen(true);
       }}
     />}
+
+    <CartDrawer
+      lines={cartLines}
+      subtotal={subtotal}
+      count={cartCount}
+      open={cartDrawerOpen}
+      onOpenChange={setCartDrawerOpen}
+      onIncrement={incrementLine}
+      onDecrement={decrementLine}
+      onRemove={removeCartLine}
+      onDuplicate={duplicateCartLine}
+      onEdit={handleEditLine}
+      onClear={clearCartLines}
+      onCheckout={handleCheckout}
+      onViewMenu={openMenu}
+    />
   </>;
 }
