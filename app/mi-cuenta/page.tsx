@@ -77,6 +77,7 @@ export default function MiCuenta() {
     <p>Inicia sesión para ver tus promociones, eventos, videos e imágenes exclusivas.</p>
     <a className="btn primary" href="/login">Iniciar sesión</a>
     <p style={{ marginTop: 14 }}>¿Aún no tienes cuenta? <a href="/registro">Créala aquí</a>.</p>
+    <p style={{ marginTop: 30 }}><a href="/">← Volver al catálogo</a></p>
   </main>;
 
   const approved = isAdmin || profile?.enabled === true;
