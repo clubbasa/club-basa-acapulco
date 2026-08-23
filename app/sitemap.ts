@@ -1,2 +1,2 @@
 import type {MetadataRoute} from 'next';
-export default function sitemap():MetadataRoute.Sitemap{const base=process.env.NEXT_PUBLIC_SITE_URL||'https://menu.club-basa.com';return ['','/blog','/login'].map(path=>({url:base+path,lastModified:new Date()}))}
+export default function sitemap():MetadataRoute.Sitemap{const base=process.env.NEXT_PUBLIC_SITE_URL||'https://menu.club-basa.com';return ['','/blog','/login','/aviso-de-privacidad','/terminos-y-condiciones','/politica-cambios-cancelaciones'].map(path=>({url:base+path,lastModified:new Date()}))}

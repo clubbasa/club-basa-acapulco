@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/
 import { auth, db } from '@/lib/firebase';
 import { getPromotions, type Promotion } from '@/lib/promotions';
 import { getProductVideoEmbed } from '@/lib/video';
+import Footer from '@/components/Footer';
 
 type UserProfile = { name?: string; whatsapp?: string; enabled?: boolean };
 
@@ -72,18 +73,22 @@ export default function MiCuenta() {
 
   if (loading) return <main className="container" style={{ padding: '80px 0' }}><h1>Mi cuenta</h1><p>Cargando…</p></main>;
 
-  if (!user) return <main className="container" style={{ padding: '80px 0' }}>
+  if (!user) return <>
+  <main className="container" style={{ padding: '80px 0' }}>
     <span className="eyebrow">Club BASA • Mi cuenta</span>
     <h1>Mi cuenta</h1>
     <p>Inicia sesión para ver tus promociones, eventos, videos e imágenes exclusivas.</p>
     <a className="btn primary" href="/login">Iniciar sesión</a>
     <p style={{ marginTop: 14 }}>¿Aún no tienes cuenta? <a href="/registro">Créala aquí</a>.</p>
     <p style={{ marginTop: 30 }}><a href="/">← Volver al catálogo</a></p>
-  </main>;
+  </main>
+  <Footer/>
+  </>;
 
   const approved = isAdmin || profile?.enabled === true;
 
-  return <main className="container" style={{ padding: '50px 0 90px' }}>
+  return <>
+  <main className="container" style={{ padding: '50px 0 90px' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
       <div><span className="eyebrow">Club BASA • Mi cuenta</span>
       <h1>Hola{profile?.name ? `, ${profile.name}` : ''}</h1></div>
@@ -136,5 +141,7 @@ export default function MiCuenta() {
     )}
 
     <p style={{ marginTop: 30 }}><a href="/">← Volver al catálogo</a></p>
-  </main>;
+  </main>
+  <Footer/>
+  </>;
 }

@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { waLink } from '@/lib/whatsapp';
+import Footer from '@/components/Footer';
 
 const ERROR_MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'Ya existe una cuenta con ese correo. Intenta iniciar sesión.',
@@ -19,6 +20,7 @@ export default function Registro() {
   const [whatsapp, setWhatsapp] = useState('');
   const [password, setPassword] = useState('');
   const [isDistributor, setIsDistributor] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [msg, setMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
@@ -52,6 +54,7 @@ export default function Registro() {
   const notifyText = `Hola Club BASA 👋 Acabo de registrarme en el catálogo.\nNombre: ${name.trim()}\nWhatsApp: ${whatsapp.trim()}${isDistributor ? '\nSoy distribuidor.' : ''}\n¿Podrían activar mi cuenta para ver las promociones exclusivas?`;
 
   if (registered) return (
+    <>
     <main className="container" style={{ padding: '80px 0', maxWidth: 520 }}>
       <span className="eyebrow">Club BASA • Mi cuenta</span>
       <h1>¡Cuenta creada!</h1>
@@ -61,9 +64,12 @@ export default function Registro() {
       <a className="btn primary" href={waLink(notifyText)} target="_blank" rel="noreferrer">Avisar por WhatsApp</a>
       <p style={{ marginTop: 20 }}><a href="/mi-cuenta">Ir a mi cuenta →</a></p>
     </main>
+    <Footer/>
+    </>
   );
 
   return (
+    <>
     <main className="container" style={{ padding: '80px 0', maxWidth: 520 }}>
       <span className="eyebrow">Club BASA • Mi cuenta</span>
       <h1>Crea tu cuenta</h1>
@@ -96,6 +102,11 @@ export default function Registro() {
           <input type="checkbox" checked={isDistributor} onChange={(e) => setIsDistributor(e.target.checked)} /> Soy Distribuidor
         </label>
 
+        <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 16, cursor: 'pointer' }}>
+          <input type="checkbox" required checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>He leído y acepto los <a href="/terminos-y-condiciones" target="_blank" rel="noreferrer">Términos y Condiciones</a> y el <a href="/aviso-de-privacidad" target="_blank" rel="noreferrer">Aviso de Privacidad</a>.</span>
+        </label>
+
         <button className="btn primary" type="submit" disabled={submitting}>
           {submitting ? 'Creando cuenta…' : 'Crear mi cuenta'}
         </button>
@@ -107,5 +118,7 @@ export default function Registro() {
       <p>¿Ya tienes cuenta? <a href="/login">Inicia sesión</a></p>
       <a href="/">← Volver al catálogo</a>
     </main>
+    <Footer/>
+    </>
   );
 }

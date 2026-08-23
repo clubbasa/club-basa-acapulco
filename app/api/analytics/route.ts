@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 // no IP address, user agent, or auth/session data is ever stored. Values are
 // matched against fixed allow-lists so clients can't create arbitrary
 // counter buckets or write free-form data.
-const ALLOWED_PAGES = new Set(['/', '/blog', '/blog/panquecitos-acapulco', '/blog/menu-club-basa', '/blog/envios-acapulco']);
+const ALLOWED_PAGES = new Set(['/', '/blog', '/blog/panquecitos-acapulco', '/blog/menu-club-basa', '/blog/envios-acapulco', '/aviso-de-privacidad', '/terminos-y-condiciones', '/politica-cambios-cancelaciones']);
 const ALLOWED_AREAS = new Set(['hero', 'producto-estrella', 'desayuno', 'categorias', 'menu', 'experiencia', 'pedido']);
 // Landing CTAs — lets the admin see which button converts best (view_product/
 // add_to_cart already exist below and are used by the catalog too).

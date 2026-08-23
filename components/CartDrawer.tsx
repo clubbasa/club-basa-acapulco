@@ -77,6 +77,7 @@ export default function CartDrawer({ lines, subtotal, count, open, onOpenChange,
               </div>
 
               <button type="button" className="btn primary cartCheckout" onClick={onCheckout}>Enviar pedido por WhatsApp</button>
+              <p className="small cartLegalNote">Al enviar tu pedido aceptas nuestros <a href="/terminos-y-condiciones">Términos y Condiciones</a> y nuestra <a href="/politica-cambios-cancelaciones">Política de Cambios y Cancelaciones</a>.</p>
               <button type="button" className="cartClearLink" onClick={() => setConfirmClearOpen(true)}>Vaciar carrito</button>
             </>}
           </div>
