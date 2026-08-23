@@ -7,12 +7,13 @@ import { resolveComboOptionPrice, slotQtyTotal, type ComboDefinition, type Combo
 type Props = {
   products: CatalogProduct[];
   combo: ComboDefinition;
+  hasSix: boolean;
   initialSelections?: ComboSelections;
   onAdd: (selections: ComboSelections) => void;
   onClose: () => void;
 };
 
-export default function ComboBuilder({ products, combo, initialSelections, onAdd, onClose }: Props) {
+export default function ComboBuilder({ products, combo, hasSix, initialSelections, onAdd, onClose }: Props) {
   const [step, setStep] = useState(initialSelections ? combo.slots.length : 0);
   const [selections, setSelections] = useState<ComboSelections>(initialSelections ?? {});
 
@@ -44,13 +45,17 @@ export default function ComboBuilder({ products, combo, initialSelections, onAdd
               {currentSlot.options.map((option) => {
                 const price = priceOf(option);
                 const qty = selections[currentSlot.id]?.[option.id] ?? 0;
+                const isFree = price === 0;
+                const freeLocked = isFree && !hasSix;
+                const addDisabled = isFree && (freeLocked || qty >= 1);
+                const priceLabel = isFree ? (freeLocked ? ' — gratis (con tu six)' : ' — gratis') : ` — $${price}`;
                 return (
                   <li key={option.id} className="comboOptionRow">
-                    <span>{option.label}{price > 0 ? ` — $${price}` : ' — gratis'}</span>
+                    <span>{option.label}{priceLabel}</span>
                     <div className="qty">
                       <button type="button" aria-label={`Quitar ${option.label}`} onClick={() => setOptionQty(currentSlot.id, option.id, qty - 1)}>−</button>
                       <span>{qty}</span>
-                      <button type="button" aria-label={`Agregar ${option.label}`} onClick={() => setOptionQty(currentSlot.id, option.id, qty + 1)}>+</button>
+                      <button type="button" aria-label={`Agregar ${option.label}`} disabled={addDisabled} onClick={() => setOptionQty(currentSlot.id, option.id, qty + 1)}>+</button>
                     </div>
                   </li>
                 );
