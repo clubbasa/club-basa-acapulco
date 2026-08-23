@@ -7,13 +7,14 @@ import { resolveComboOptionPrice, type ComboDefinition, type ComboSlot, type Com
 type Props = {
   products: CatalogProduct[];
   combo: ComboDefinition;
+  initialSelections?: Record<string, ComboSlotOption | null>;
   onAdd: (selections: Record<string, ComboSlotOption | null>) => void;
   onClose: () => void;
 };
 
-export default function ComboBuilder({ products, combo, onAdd, onClose }: Props) {
-  const [step, setStep] = useState(0);
-  const [selections, setSelections] = useState<Record<string, ComboSlotOption | null>>({});
+export default function ComboBuilder({ products, combo, initialSelections, onAdd, onClose }: Props) {
+  const [step, setStep] = useState(initialSelections ? combo.slots.length : 0);
+  const [selections, setSelections] = useState<Record<string, ComboSlotOption | null>>(initialSelections ?? {});
 
   const currentSlot: ComboSlot | undefined = combo.slots[step];
   const isSummary = !currentSlot;
@@ -72,7 +73,7 @@ export default function ComboBuilder({ products, combo, onAdd, onClose }: Props)
             <div className="productModalPrice">Total: ${total}</div>
             <div className="comboNav">
               <button type="button" className="btn secondary" onClick={() => setStep(combo.slots.length - 1)}>Atrás</button>
-              <button type="button" className="btn primary productModalAdd" onClick={() => onAdd(selections)}>Agregar al pedido</button>
+              <button type="button" className="btn primary productModalAdd" onClick={() => onAdd(selections)}>{initialSelections ? 'Guardar cambios' : 'Agregar al pedido'}</button>
             </div>
           </div>}
         </div>
