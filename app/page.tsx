@@ -590,6 +590,7 @@ export default function Home() {
     {openComboId && getCombo(openComboId) && <ComboBuilder
       products={products}
       combo={getCombo(openComboId)!}
+      hasSix={quantityFor('six') > 0}
       initialSelections={editingComboSelections ?? undefined}
       onClose={() => { setOpenComboId(null); setEditingLineId(null); setEditingComboSelections(null); }}
       onAdd={(selections) => {

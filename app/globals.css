@@ -21,6 +21,7 @@
 .comboStep.active{background:var(--brand)}
 .comboOptionList{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:10px}
 .comboOptionRow{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 14px;background:var(--cream);border-radius:14px;font-weight:700}
+.comboOptionRow .qty button:disabled{opacity:.4;cursor:not-allowed}
 .comboNav{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
 .comboNav .btn{flex:1;min-width:120px}
 .comboSummaryList{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:10px}
