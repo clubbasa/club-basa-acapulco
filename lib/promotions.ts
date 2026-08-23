@@ -1,5 +1,4 @@
 import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import type { ProductVideoProvider } from '@/lib/video';
 
@@ -41,7 +40,7 @@ function safeFilename(value: string) {
 }
 
 export async function uploadPromotionImage(promotionId: string, file: File) {
-  const currentUser = getAuth().currentUser || auth.currentUser;
+  const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');
 
   const token = await currentUser.getIdToken();
