@@ -354,7 +354,7 @@ export default function Home() {
         title="Clic: inicio · Doble clic/tap: acceso administrativo"
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
-      <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a></nav>
+      <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#encuentranos">Encuéntranos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir por WhatsApp</a>
       <button type="button" className="themeToggle" aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} onClick={toggleTheme}>
         {theme === 'dark'
@@ -364,7 +364,7 @@ export default function Home() {
       <button type="button" className="navToggle" aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? '✕' : '☰'}</button>
     </div>
     {mobileMenuOpen && <nav id="mobile-menu" className="mobileMenu" aria-label="Menú móvil" onClick={() => setMobileMenuOpen(false)}>
-      <a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a>
+      <a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#encuentranos">Encuéntranos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a>
     </nav>}
     </header>
 
@@ -500,6 +500,28 @@ export default function Home() {
               <div className="card"><h3>$60 aprox.</h3><p>Zona cercana a La Garita, incluyendo referencias como VIPS de La Diana, Costera 125, Roble, Anclas y Laja.</p></div>
               <div className="card"><h3>$80 aprox.</h3><p>Progreso, zona Centro, Zócalo, Costa Azul y zonas dentro de ese rango.</p></div>
               <div className="card"><h3>¿Fuera de zona?</h3><p>Envíanos tu ubicación. El repartidor cotiza el costo antes de confirmar.</p><a className="btn primary" href={waLink('Hola Club BASA, quiero cotizar mi envío. Les comparto mi ubicación.')} onClick={() => track('cta_click', { cta: 'envios_cotizar' })}>Cotizar envío</a></div>
+            </div>
+          </div>
+
+          <div id="encuentranos" className="sceneSub">
+            <div className="sectionHead"><h2>Encuéntranos</h2><p>Visítanos en nuestro local en Acapulco o escríbenos directo.</p></div>
+            <div className="grid3">
+              <div className="card">
+                <h3>Nuestra dirección</h3>
+                <p>Av. Cuauhtémoc, Col. Garita, Acapulco, Guerrero, México, C.P. 39650.</p>
+                <p className="small">Frente a la iglesia, a un lado del OXXO, fachada color verde.</p>
+                <a className="btn primary" href="https://g.page/clubbasa" target="_blank" rel="noreferrer" onClick={() => track('cta_click', { cta: 'como_llegar' })}>Cómo llegar</a>
+              </div>
+              <div className="card">
+                <h3>WhatsApp</h3>
+                <p>Escríbenos para pedidos, dudas o cotizar tu envío.</p>
+                <a className="btn secondary" href={waLink('Hola Club BASA, quiero más información.')} target="_blank" rel="noreferrer">744 588 7237</a>
+              </div>
+              <div className="card">
+                <h3>Correo</h3>
+                <p>Para dudas o solicitudes que prefieras dejar por escrito.</p>
+                <a className="btn secondary" href="mailto:info@club-basa.com">info@club-basa.com</a>
+              </div>
             </div>
           </div>
 

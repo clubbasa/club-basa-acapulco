@@ -20,8 +20,11 @@ export default function AvisoDePrivacidad() {
       <h2>1. Responsable del tratamiento</h2>
       <p>
         Club BASA Acapulco (en adelante, &ldquo;Club BASA&rdquo; o &ldquo;nosotros&rdquo;) es el responsable del tratamiento de tus
-        datos personales conforme a este aviso. Operamos en Acapulco, Guerrero, México, y puedes contactarnos por WhatsApp
-        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a> o mediante el formulario de contacto de este sitio.
+        datos personales conforme a este aviso. Nuestro local está en Av. Cuauhtémoc, Col. Garita, Acapulco, Guerrero,
+        México, C.P. 39650 (frente a la iglesia, a un lado del OXXO, fachada color verde) — esta es la ubicación pública
+        de nuestro establecimiento, no necesariamente nuestro domicilio fiscal. Puedes contactarnos por WhatsApp
+        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a>, por correo
+        a <a href="mailto:info@club-basa.com">info@club-basa.com</a>, o mediante el formulario de contacto de este sitio.
       </p>
 
       <h2>2. Datos personales que recabamos</h2>
@@ -143,8 +146,9 @@ export default function AvisoDePrivacidad() {
       <h2>10. Contacto</h2>
       <p>
         Si tienes dudas sobre este aviso de privacidad o sobre el tratamiento de tus datos personales, escríbenos por
-        WhatsApp al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a> o
-        usa el <a href="/#contacto">formulario de contacto</a> de este sitio.
+        WhatsApp al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a>, por correo
+        a <a href="mailto:info@club-basa.com">info@club-basa.com</a>, o usa el <a href="/#contacto">formulario de contacto</a> de
+        este sitio.
       </p>
     </LegalPage>
   );

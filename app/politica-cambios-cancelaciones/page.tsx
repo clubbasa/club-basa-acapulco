@@ -79,8 +79,9 @@ export default function PoliticaCambiosCancelaciones() {
       <h2>7. Contacto</h2>
       <p>
         Para cualquier duda sobre cambios, cancelaciones o devoluciones, escríbenos por WhatsApp
-        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a> o usa
-        el <a href="/#contacto">formulario de contacto</a> de este sitio.
+        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a>, por correo
+        a <a href="mailto:info@club-basa.com">info@club-basa.com</a>, o usa el <a href="/#contacto">formulario de
+        contacto</a> de este sitio.
       </p>
     </LegalPage>
   );

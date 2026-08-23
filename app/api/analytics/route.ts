@@ -15,7 +15,7 @@ const ALLOWED_AREAS = new Set(['hero', 'producto-estrella', 'desayuno', 'categor
 const ALLOWED_CTAS = new Set([
   'header_order', 'hero_order', 'hero_menu', 'six_order', 'breakfast_order',
   'menu_explore', 'final_order', 'final_menu', 'sticky_order',
-  'envios_cotizar', 'experiencia_contacto',
+  'envios_cotizar', 'experiencia_contacto', 'como_llegar',
 ]);
 // Product ids are a fixed catalog (lib/menu.ts + the "menu" poster), not
 // free-form input from the client.
