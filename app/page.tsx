@@ -12,7 +12,7 @@ import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/hooks/useCart';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
-import { getCombo, buildComboLine, type ComboSlotOption } from '@/lib/combos';
+import { getCombo, buildComboLine, type ComboSelections } from '@/lib/combos';
 import type { CartLine, VariantCartLine } from '@/lib/cart';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
@@ -43,7 +43,7 @@ export default function Home() {
   const [openComboId, setOpenComboId] = useState<string | null>(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
-  const [editingComboSelections, setEditingComboSelections] = useState<Record<string, ComboSlotOption | null> | null>(null);
+  const [editingComboSelections, setEditingComboSelections] = useState<ComboSelections | null>(null);
   const closedViaBackRef = useRef(false);
   // zoom+pan live in one state object so the wheel handler below can update
   // both in a single, pure setState call (see react-doctor/no-impure-state-updater).
@@ -261,12 +261,14 @@ export default function Home() {
     if (line.kind === 'combo') {
       const combo = getCombo(line.comboId);
       if (!combo) return;
-      const selections: Record<string, ComboSlotOption | null> = {};
+      const selections: ComboSelections = {};
       combo.slots.forEach((slot) => {
-        const component = line.components.find((c) => c.slotId === slot.id);
-        selections[slot.id] = component
-          ? slot.options.find((option) => option.productId === component.productId && option.variantId === component.variantId) ?? null
-          : null;
+        const slotSelection: Record<string, number> = {};
+        line.components.filter((c) => c.slotId === slot.id).forEach((component) => {
+          const option = slot.options.find((o) => o.productId === component.productId && o.variantId === component.variantId);
+          if (option) slotSelection[option.id] = component.qty;
+        });
+        selections[slot.id] = slotSelection;
       });
       setEditingLineId(line.lineId);
       setEditingComboSelections(selections);

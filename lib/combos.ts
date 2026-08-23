@@ -5,6 +5,10 @@ import { resolveVariantPrice, VARIANT_GROUPS } from './variants';
 export type ComboSlotOption = { id: string; label: string; productId: string; variantId?: string };
 export type ComboSlot = { id: string; title: string; required: boolean; options: ComboSlotOption[] };
 export type ComboDefinition = { id: string; name: string; slots: ComboSlot[] };
+// slotId -> optionId -> cantidad elegida (0 o ausente = no seleccionado). Cada opción de
+// cada paso admite su propia cantidad, para poder combinar varias (p. ej. 2 Malteadas
+// + 1 Café) en vez de una sola opción por paso.
+export type ComboSelections = Record<string, Record<string, number>>;
 
 const panquecitoFlavorOptions: ComboSlotOption[] = (VARIANT_GROUPS.find((group) => group.productId === 'single')?.options ?? [])
   .map((option) => ({ id: option.id, label: `Panquecito ${option.label}`, productId: 'single', variantId: option.id }));
@@ -56,18 +60,29 @@ export function resolveComboOptionPrice(products: CatalogProduct[], option: Comb
   return variantOption ? resolveVariantPrice(product, variantOption) : product.price;
 }
 
+export function slotQtyTotal(selections: ComboSelections, slotId: string): number {
+  return Object.values(selections[slotId] ?? {}).reduce((sum, qty) => sum + (qty > 0 ? qty : 0), 0);
+}
+
 export function buildComboLine(
   products: CatalogProduct[],
   combo: ComboDefinition,
-  selections: Record<string, ComboSlotOption | null>,
+  selections: ComboSelections,
 ): Omit<ComboCartLine, 'lineId' | 'addedAt' | 'qty'> {
-  const components: ComboComponent[] = combo.slots
-    .map((slot): ComboComponent | null => {
-      const option = selections[slot.id];
-      if (!option) return null;
-      return { slotId: slot.id, label: slot.title, productId: option.productId, variantId: option.variantId, name: option.label, price: resolveComboOptionPrice(products, option) };
-    })
-    .filter((component): component is ComboComponent => component !== null);
-  const unitPrice = components.reduce((sum, component) => sum + component.price, 0);
+  const components: ComboComponent[] = combo.slots.flatMap((slot): ComboComponent[] => {
+    const slotSelection = selections[slot.id] ?? {};
+    return slot.options
+      .filter((option) => (slotSelection[option.id] ?? 0) > 0)
+      .map((option): ComboComponent => ({
+        slotId: slot.id,
+        label: slot.title,
+        productId: option.productId,
+        variantId: option.variantId,
+        name: option.label,
+        price: resolveComboOptionPrice(products, option),
+        qty: slotSelection[option.id],
+      }));
+  });
+  const unitPrice = components.reduce((sum, component) => sum + component.price * component.qty, 0);
   return { kind: 'combo', comboId: combo.id, name: combo.name, unitPrice, components };
 }
