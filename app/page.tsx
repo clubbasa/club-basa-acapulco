@@ -6,6 +6,7 @@ import { getCatalog, getFallbackCategories, getFallbackProducts, type CatalogPro
 import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
+import { useCart } from '@/hooks/useCart';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
 import ContactForm from '@/components/ContactForm';
@@ -22,8 +23,7 @@ export default function Home() {
   const [categories, setCategories] = useState(getFallbackCategories());
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [cartHydrated, setCartHydrated] = useState(false);
+  const { lines: cartLines, subtotal, count: cartCount, addSimple, setQty: setCartQty } = useCart(products);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const closedViaBackRef = useRef(false);
   // zoom+pan live in one state object so the wheel handler below can update
@@ -51,21 +51,6 @@ export default function Home() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('clubbasa-theme', next);
   };
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('clubbasa-cart');
-      if (saved) setCart(JSON.parse(saved));
-    } catch { /* localStorage unavailable (private browsing) or corrupt data */ }
-    setCartHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!cartHydrated) return;
-    try {
-      localStorage.setItem('clubbasa-cart', JSON.stringify(cart));
-    } catch { /* localStorage unavailable (private browsing, storage full) */ }
-  }, [cart, cartHydrated]);
 
   useEffect(() => {
     let mounted = true;
@@ -184,9 +169,12 @@ export default function Home() {
   const visibleProducts = useMemo(() => products
     .filter((p) => p.id !== 'coffee')
     .filter((p) => activeCategory === 'Todos' || p.category === activeCategory), [products, activeCategory]);
-  const items = useMemo(() => Object.entries(cart).map(([id, qty]) => ({ id, qty })).filter((x) => x.qty > 0), [cart]);
-  const total = items.reduce((sum, item) => sum + (products.find((p) => p.id === item.id)?.price || 0) * item.qty, 0);
-  const add = (id: string, delta: number) => setCart((current) => ({ ...current, [id]: Math.max(0, (current[id] || 0) + delta) }));
+  const quantityFor = (productId: string) => cartLines.find((line) => line.kind === 'simple' && line.productId === productId)?.qty || 0;
+  const addProduct = (product: CatalogProduct, delta: number) => {
+    if (delta > 0) { addSimple(product, delta); return; }
+    const line = cartLines.find((l) => l.kind === 'simple' && l.productId === product.id);
+    if (line) setCartQty(line.lineId, line.qty + delta);
+  };
   const openProduct = (product: CatalogProduct) => {
     setSelectedProduct(product);
     track('view_product', { product: product.id });
@@ -364,10 +352,10 @@ export default function Home() {
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
-          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, -1); }}>−</button><span>{cart[product.id] || 0}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); add(product.id, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
+          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div><div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>
         </article>)}</div>
       </div></Reveal>}</section>
-      {items.length > 0 && <div className="cart"><div><strong>{items.reduce((sum, item) => sum + item.qty, 0)} productos</strong><br/><span>${total} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: total }); window.location.href = waLink(buildOrder(items)); }}>Enviar pedido por WhatsApp</button></div>}
+      {cartLines.length > 0 && <div className="cart"><div><strong>{cartCount} productos</strong><br/><span>${subtotal} + envío por confirmar</span></div><button className="btn" onClick={() => { track('whatsapp_order', { value: subtotal }); window.location.href = waLink(buildOrder(cartLines)); }}>Enviar pedido por WhatsApp</button></div>}
 
       {/* Escena 5 — Experiencia Club BASA: solo fotos reales, sin testimonios inventados */}
       <ScrollScene id="experiencia">
@@ -432,7 +420,7 @@ export default function Home() {
     </main>
 
     {/* CTA sticky móvil: solo tras salir del hero, y solo si el carrito flotante no está ya visible (no compiten por espacio) */}
-    {heroPassed && items.length === 0 && <a
+    {heroPassed && cartLines.length === 0 && <a
       className="stickyOrderCta"
       href={waLink('Hola Club BASA, quiero hacer un pedido.')}
       onClick={() => track('cta_click', { cta: 'sticky_order' })}
@@ -474,8 +462,8 @@ export default function Home() {
             </div>
           </div>}
 
-          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => add(selectedProduct.id, -1)}>−</button><span>{cart[selectedProduct.id] || 0}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { add(selectedProduct.id, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
-          <button className="btn primary productModalAdd" onClick={() => add(selectedProduct.id, 1)}>Agregar al carrito</button>
+          <div className="productModalActions"><button aria-label={`Quitar ${selectedProduct.name}`} onClick={() => addProduct(selectedProduct, -1)}>−</button><span>{quantityFor(selectedProduct.id)}</span><button aria-label={`Agregar ${selectedProduct.name}`} onClick={() => { addProduct(selectedProduct, 1); track('add_to_cart', { product: selectedProduct.id }); }}>+</button></div>
+          <button className="btn primary productModalAdd" onClick={() => addProduct(selectedProduct, 1)}>Agregar al carrito</button>
         </div>
       </section>
     </div>}
