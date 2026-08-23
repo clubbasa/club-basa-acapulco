@@ -58,8 +58,9 @@ service cloud.firestore {
 
     match /analytics/{id} {
       allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      // Analytics is written exclusively by /api/analytics with Firebase Admin
+      // credentials. Blocking direct client writes prevents forged metrics.
+      allow write: if false;
     }
   }
 }
