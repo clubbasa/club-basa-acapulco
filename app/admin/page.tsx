@@ -57,6 +57,12 @@ export default function Admin() {
   const [selectedPromotionImage, setSelectedPromotionImage] = useState<File | null>(null);
   const [promotionImagePreview, setPromotionImagePreview] = useState('');
   const [savingPromotion, setSavingPromotion] = useState(false);
+  const [adminProfile, setAdminProfile] = useState<{ name?: string; whatsapp?: string } | null>(null);
+  const [editAdminName, setEditAdminName] = useState('');
+  const [editAdminWhatsapp, setEditAdminWhatsapp] = useState('');
+  const [savingAdminProfile, setSavingAdminProfile] = useState(false);
+  const [adminProfileMsg, setAdminProfileMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [adminProfileOpen, setAdminProfileOpen] = useState(false);
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,13 +142,42 @@ export default function Admin() {
   };
 
   useEffect(() => {
+    if (!adminProfile) return;
+    setEditAdminName(adminProfile.name || '');
+    setEditAdminWhatsapp(adminProfile.whatsapp || '');
+  }, [adminProfile]);
+
+  const saveAdminProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+    setAdminProfileMsg(null);
+    setSavingAdminProfile(true);
+    try {
+      const name = editAdminName.trim();
+      const whatsapp = editAdminWhatsapp.trim();
+      await updateDoc(doc(db, 'admins', user.uid), { name, whatsapp });
+      setAdminProfile({ name, whatsapp });
+      setAdminProfileMsg({ type: 'ok', text: 'Datos actualizados.' });
+    } catch (error) {
+      console.error(error);
+      setAdminProfileMsg({ type: 'error', text: 'No se pudo guardar. Intenta de nuevo.' });
+    } finally {
+      setSavingAdminProfile(false);
+    }
+  };
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (!currentUser) { setLoading(false); return; }
       try {
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-        setIsAdmin(adminDoc.exists() && adminDoc.data()?.enabled === true);
-        if (adminDoc.exists() && adminDoc.data()?.enabled === true) await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages()]);
+        const enabled = adminDoc.exists() && adminDoc.data()?.enabled === true;
+        setIsAdmin(enabled);
+        if (enabled) {
+          setAdminProfile({ name: adminDoc.data()?.name, whatsapp: adminDoc.data()?.whatsapp });
+          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages()]);
+        }
       } catch (error) {
         console.error(error);
         setIsAdmin(false);
@@ -366,6 +401,25 @@ export default function Admin() {
       <button type="button" className="btn secondary" onClick={() => signOut(auth)}>Cerrar sesión</button>
     </div>
     {message && <div className="card" style={{ margin: '18px 0' }}>{message}</div>}
+
+    <section style={{ padding: '25px 0' }}>
+      <div className="sectionHead" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div><h2>Mis datos</h2><p>Nombre y WhatsApp de contacto de tu cuenta de administrador.</p></div>
+        <button type="button" className="btn secondary" aria-expanded={adminProfileOpen} onClick={() => setAdminProfileOpen((open) => !open)}>{adminProfileOpen ? 'Ocultar' : 'Editar datos'}</button>
+      </div>
+      {adminProfileOpen && <form className="form" style={{ maxWidth: 420 }} onSubmit={saveAdminProfile}>
+        <div className="field">
+          <label htmlFor="admin-profile-name">Nombre</label>
+          <input id="admin-profile-name" type="text" value={editAdminName} onChange={(e) => setEditAdminName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="admin-profile-whatsapp">WhatsApp</label>
+          <input id="admin-profile-whatsapp" type="tel" value={editAdminWhatsapp} onChange={(e) => setEditAdminWhatsapp(e.target.value)} placeholder="744 123 4567" />
+        </div>
+        <button className="btn primary" type="submit" disabled={savingAdminProfile}>{savingAdminProfile ? 'Guardando…' : 'Guardar cambios'}</button>
+        {adminProfileMsg && <p className={adminProfileMsg.type === 'error' ? 'error' : 'small'} role={adminProfileMsg.type === 'error' ? 'alert' : undefined} style={{ marginTop: 10 }}>{adminProfileMsg.text}</p>}
+      </form>}
+    </section>
 
     <section style={{ padding: '25px 0' }}><div className="card">
       <h2>Visitas del sitio</h2>

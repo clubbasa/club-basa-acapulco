@@ -15,7 +15,12 @@ service cloud.firestore {
 
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
+      // El propio admin puede editar sus datos de contacto (nombre, WhatsApp), pero
+      // nunca su campo `enabled` — así nadie puede auto-otorgarse permisos de admin.
+      // Crear o eliminar una cuenta de admin sigue reservado al Admin SDK del servidor.
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.enabled == resource.data.enabled;
+      allow create, delete: if false;
     }
 
     match /users/{uid} {
