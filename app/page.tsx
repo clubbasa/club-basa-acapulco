@@ -214,17 +214,22 @@ export default function Home() {
   const visibleProducts = useMemo(() => products
     .filter((p) => p.id !== 'coffee')
     .filter((p) => activeCategory === 'Todos' || p.category === activeCategory), [products, activeCategory]);
-  // Deduplica por nombre: si Firestore llega a tener dos documentos de categoría con el
-  // mismo nombre (p. ej. dos "Promoción" con ids distintos), el catálogo nunca debe
-  // mostrar dos pestañas idénticas ni marcar ambas como activas al mismo tiempo.
+  // Deduplica por nombre (si Firestore llega a tener dos documentos de categoría con el
+  // mismo nombre, el catálogo nunca debe mostrar dos pestañas idénticas ni marcar ambas
+  // como activas al mismo tiempo) y oculta cualquier categoría sin productos elegibles
+  // para mostrar (evita pestañas "muertas" que siempre quedan vacías al hacer clic).
   const visibleCategories = useMemo(() => {
     const seenNames = new Set<string>();
-    return categories.filter((category) => !isInternalCategory(category.id)).filter((category) => {
-      if (seenNames.has(category.name)) return false;
-      seenNames.add(category.name);
-      return true;
-    });
-  }, [categories]);
+    const eligibleProducts = products.filter((p) => p.id !== 'coffee');
+    return categories
+      .filter((category) => !isInternalCategory(category.id))
+      .filter((category) => eligibleProducts.some((p) => p.category === category.name))
+      .filter((category) => {
+        if (seenNames.has(category.name)) return false;
+        seenNames.add(category.name);
+        return true;
+      });
+  }, [categories, products]);
   const quantityFor = (productId: string) => cartLines.find((line) => line.kind === 'simple' && line.productId === productId)?.qty || 0;
   const variantQtyFor = (productId: string) => cartLines.filter((line) => line.kind === 'variant' && line.productId === productId).reduce((sum, line) => sum + line.qty, 0);
   const addProduct = (product: CatalogProduct, delta: number) => {
