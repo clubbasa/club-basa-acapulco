@@ -139,8 +139,9 @@ export default function TerminosYCondiciones() {
       <h2>14. Contacto</h2>
       <p>
         Si tienes dudas sobre estos términos, escríbenos por WhatsApp
-        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a> o usa
-        el <a href="/#contacto">formulario de contacto</a> de este sitio.
+        al <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer">{WA_DISPLAY}</a>, por correo
+        a <a href="mailto:info@club-basa.com">info@club-basa.com</a>, usa el <a href="/#contacto">formulario de
+        contacto</a> de este sitio, o visítanos en Av. Cuauhtémoc, Col. Garita, Acapulco, Guerrero, C.P. 39650.
       </p>
     </LegalPage>
   );
