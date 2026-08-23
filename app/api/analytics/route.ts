@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb } from '@/lib/firebase-admin';
+import { enforceRateLimit, errorResponse, readJsonBody, successResponse } from '@/lib/api-abuse';
 
 export const runtime = 'nodejs';
 
@@ -26,31 +26,43 @@ async function write(type: string, key: string) {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => null);
-  if (!body?.event) return NextResponse.json({ ok: false }, { status: 400 });
+  const rateLimitError = enforceRateLimit(req, 'analytics', { limit: 120, windowMs: 60_000 });
+  if (rateLimitError) return rateLimitError;
 
-  const { path, area, cta, product } = body.data || {};
+  const parsed = await readJsonBody(req);
+  if ('error' in parsed) return parsed.error;
+  const body = parsed.data;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return errorResponse('Solicitud inválida.', 400);
+
+  const event = (body as { event?: unknown }).event;
+  const data = (body as { data?: unknown }).data;
+  if (typeof event !== 'string' || !data || typeof data !== 'object' || Array.isArray(data)) {
+    return errorResponse('Solicitud inválida.', 400);
+  }
+
+  const { path, area, cta, product } = data as Record<string, unknown>;
 
   try {
-    if (body.event === 'page_view' && typeof path === 'string' && ALLOWED_PAGES.has(path)) {
+    if (event === 'page_view' && typeof path === 'string' && ALLOWED_PAGES.has(path)) {
       await write('page_view', `page:${path}`);
-    } else if (body.event === 'section_view' && typeof area === 'string' && ALLOWED_AREAS.has(area)) {
+    } else if (event === 'section_view' && typeof area === 'string' && ALLOWED_AREAS.has(area)) {
       await write('section_view', `area:${area}`);
-    } else if (body.event === 'cta_click' && typeof cta === 'string' && ALLOWED_CTAS.has(cta)) {
+    } else if (event === 'cta_click' && typeof cta === 'string' && ALLOWED_CTAS.has(cta)) {
       await write('cta_click', `cta:${cta}`);
-    } else if (body.event === 'view_product' && typeof product === 'string' && ALLOWED_PRODUCT_IDS.has(product)) {
+    } else if (event === 'view_product' && typeof product === 'string' && ALLOWED_PRODUCT_IDS.has(product)) {
       await write('view_product', `product:${product}`);
-    } else if (body.event === 'add_to_cart' && typeof product === 'string' && ALLOWED_PRODUCT_IDS.has(product)) {
+    } else if (event === 'add_to_cart' && typeof product === 'string' && ALLOWED_PRODUCT_IDS.has(product)) {
       await write('add_to_cart', `product:${product}`);
-    } else if (body.event === 'whatsapp_order') {
+    } else if (event === 'whatsapp_order') {
       // Fired when the cart's own WhatsApp checkout button is clicked — the
       // real "begin_order" moment, distinct from a generic click_whatsapp
       // (e.g. the hero CTA) which doesn't necessarily carry cart items yet.
       await write('begin_order', 'cta:cart_checkout');
-    }
+    } else return errorResponse('Evento de analítica no permitido.', 400);
   } catch (error) {
     console.error('Analytics write error:', error);
+    return errorResponse('No se pudo registrar el evento.', 500);
   }
 
-  return NextResponse.json({ ok: true });
+  return successResponse();
 }
