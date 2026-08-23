@@ -19,6 +19,7 @@ export default function MiCuenta() {
   const [editWhatsapp, setEditWhatsapp] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -90,8 +91,11 @@ export default function MiCuenta() {
     </div>
 
     <section style={{ padding: '25px 0' }}>
-      <div className="sectionHead"><h2>Mi perfil</h2><p>Actualiza tu nombre y tu WhatsApp de contacto.</p></div>
-      <form className="form" style={{ maxWidth: 420 }} onSubmit={saveProfile}>
+      <div className="sectionHead" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div><h2>Mi perfil</h2><p>Actualiza tu nombre y tu WhatsApp de contacto.</p></div>
+        <button type="button" className="btn secondary" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)}>{profileOpen ? 'Ocultar' : 'Editar datos'}</button>
+      </div>
+      {profileOpen && <form className="form" style={{ maxWidth: 420 }} onSubmit={saveProfile}>
         <div className="field">
           <label htmlFor="profile-name">Nombre</label>
           <input id="profile-name" type="text" required minLength={2} value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -102,7 +106,7 @@ export default function MiCuenta() {
         </div>
         <button className="btn primary" type="submit" disabled={savingProfile}>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</button>
         {profileMsg && <p className={profileMsg.type === 'error' ? 'error' : 'small'} role={profileMsg.type === 'error' ? 'alert' : undefined} style={{ marginTop: 10 }}>{profileMsg.text}</p>}
-      </form>
+      </form>}
     </section>
 
     {isAdmin && <div className="card" style={{ margin: '18px 0' }}>Tu cuenta tiene permisos de administrador. <a href="/admin">Ir al panel de administración →</a></div>}
