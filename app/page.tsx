@@ -214,6 +214,17 @@ export default function Home() {
   const visibleProducts = useMemo(() => products
     .filter((p) => p.id !== 'coffee')
     .filter((p) => activeCategory === 'Todos' || p.category === activeCategory), [products, activeCategory]);
+  // Deduplica por nombre: si Firestore llega a tener dos documentos de categoría con el
+  // mismo nombre (p. ej. dos "Promoción" con ids distintos), el catálogo nunca debe
+  // mostrar dos pestañas idénticas ni marcar ambas como activas al mismo tiempo.
+  const visibleCategories = useMemo(() => {
+    const seenNames = new Set<string>();
+    return categories.filter((category) => !isInternalCategory(category.id)).filter((category) => {
+      if (seenNames.has(category.name)) return false;
+      seenNames.add(category.name);
+      return true;
+    });
+  }, [categories]);
   const quantityFor = (productId: string) => cartLines.find((line) => line.kind === 'simple' && line.productId === productId)?.qty || 0;
   const variantQtyFor = (productId: string) => cartLines.filter((line) => line.kind === 'variant' && line.productId === productId).reduce((sum, line) => sum + line.qty, 0);
   const addProduct = (product: CatalogProduct, delta: number) => {
@@ -433,7 +444,7 @@ export default function Home() {
 
       {/* Catálogo completo — SIN scroll-snap, navegación libre y rápida. Colapsado por defecto: se despliega desde cualquier CTA "Ver menú" del sitio (todas llaman a openMenu()) y se repliega solo con el botón de la Escena 4. La <section id="menu"> se mantiene siempre en el DOM para que el scroll a #menu tenga un destino estable incluso colapsada. */}
       <section id="menu" style={menuOpen ? undefined : { padding: 0 }}>{menuOpen && <Reveal><div className="container"><div className="sectionHead"><h2>Catálogo interactivo</h2><p>Productos y precios administrados desde Firestore. Si Firebase no está disponible, se muestra un catálogo de respaldo.</p></div>
-        <div className="categoryTabsWrap"><div className="categoryTabs" ref={categoryTabsRef} role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{categories.filter((category) => !isInternalCategory(category.id)).map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>{showTabsFade && <div className="categoryTabsFade" aria-hidden="true">›</div>}</div>
+        <div className="categoryTabsWrap"><div className="categoryTabs" ref={categoryTabsRef} role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{visibleCategories.map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>{showTabsFade && <div className="categoryTabsFade" aria-hidden="true">›</div>}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
