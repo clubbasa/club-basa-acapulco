@@ -3,7 +3,7 @@ import type { CatalogProduct } from './catalog';
 type CartLineBase = { lineId: string; qty: number; addedAt: number };
 export type SimpleCartLine = CartLineBase & { kind: 'simple'; productId: string; name: string; unitPrice: number };
 export type VariantCartLine = CartLineBase & { kind: 'variant'; productId: string; variantId: string; name: string; unitPrice: number };
-export type ComboComponent = { slotId: string; label: string; productId: string; variantId?: string; name: string; price: number };
+export type ComboComponent = { slotId: string; label: string; productId: string; variantId?: string; name: string; price: number; qty: number };
 export type ComboCartLine = CartLineBase & { kind: 'combo'; comboId: string; name: string; unitPrice: number; components: ComboComponent[] };
 export type CartLine = SimpleCartLine | VariantCartLine | ComboCartLine;
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
@@ -16,7 +16,7 @@ export function computeLineSignature(line: Pick<CartLine, 'kind'> & Partial<Cart
   if (line.kind === 'simple') return `simple:${(line as SimpleCartLine).productId}`;
   if (line.kind === 'variant') { const l = line as VariantCartLine; return `variant:${l.productId}:${l.variantId}`; }
   const l = line as ComboCartLine;
-  const componentsKey = [...l.components].map((c) => `${c.slotId}=${c.productId}${c.variantId ? `/${c.variantId}` : ''}`).sort().join('|');
+  const componentsKey = [...l.components].map((c) => `${c.slotId}=${c.productId}${c.variantId ? `/${c.variantId}` : ''}:${c.qty}`).sort().join('|');
   return `combo:${l.comboId}:${componentsKey}`;
 }
 
