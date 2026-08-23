@@ -11,6 +11,8 @@ import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/hooks/useCart';
+import { useImageLock } from '@/hooks/useImageLock';
+import { protectedImageProps, IMAGE_LOCK_STYLE } from '@/lib/image-protection';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
 import { getCombo, buildComboLine, type ComboSelections } from '@/lib/combos';
 import type { CartLine, VariantCartLine } from '@/lib/cart';
@@ -40,6 +42,7 @@ export default function Home() {
     remove: removeCartLine, clear: clearCartLines, duplicate: duplicateCartLine,
     replaceVariant, replaceCombo,
   } = useCart(products);
+  const imagesLocked = useImageLock();
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [openComboId, setOpenComboId] = useState<string | null>(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
@@ -370,7 +373,7 @@ export default function Home() {
 
     <main id="inicio">
       {/* Escena 1 — Hero: se mantiene la implementación full-bleed original (ya tenía min-height:100vh y fade-in propio), solo se agrega scroll-snap y se reordenan los CTA por prioridad de conversión. */}
-      <section id="hero" className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
+      <section id="hero" className="hero heroFull"><Image className="heroImage" src={heroImage} alt="Six de panquecitos Club BASA Acapulco" fill priority sizes="100vw" quality={82} {...protectedImageProps(imagesLocked)}/><div className="heroShade" aria-hidden="true"/><div className="container heroContent"><div className="heroCopy reveal">
         <span className="eyebrow heroEyebrow">Club BASA Acapulco</span><h1>Sabor que<br/>enamora.<br/>Nutrición que<br/><em>transforma.</em></h1>
         <p>Malteadas, panquecitos, crepas, waffles y opciones para disfrutar tu desayuno, con la nutrición Herbalife que ya conoces.</p>
         <div className="actions"><a className="btn primary heroCtaPulse" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'hero_order' })}><span className="heroCtaIcon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.9-1.3c1.5.8 3.2 1.3 5.1 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm5.6 14.2c-.2.6-1.2 1.2-1.7 1.3-.4.1-1 .1-1.6-.1-.4-.1-.9-.3-1.5-.5-2.6-1.1-4.3-3.8-4.4-4-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4.2.5.7 1.8.8 1.9.1.2.1.4 0 .6-.1.2-.2.3-.3.5-.2.2-.3.3-.5.5-.2.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.5 1.6.3.1.5.1.6-.1.2-.2.7-.8.9-1.1.2-.3.4-.2.6-.1.2.1 1.5.7 1.7.8.2.1.4.2.4.3.1.2.1.7-.1 1.3z"/></svg></span>Pedir ahora</a><a className="btn secondary heroSecondary" href="#menu" onClick={(event) => { event.preventDefault(); track('cta_click', { cta: 'hero_menu' }); openMenu(); }}>Ver menú</a></div>
@@ -384,7 +387,7 @@ export default function Home() {
         <div className="container">
           <div className="sceneGrid">
             <div className="sceneMedia" style={{ aspectRatio: '4 / 5' }}>
-              {sixProduct?.image ? <Image src={sixProduct.image} alt="Six de panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 50vw" /> : <div className="menuImageEmpty" style={{ position: 'absolute', inset: 0 }}>Sin imagen</div>}
+              {sixProduct?.image ? <Image src={sixProduct.image} alt="Six de panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 50vw" {...protectedImageProps(imagesLocked)} /> : <div className="menuImageEmpty" style={{ position: 'absolute', inset: 0 }}>Sin imagen</div>}
             </div>
             <div>
               <span className="sceneEyebrow">Producto estrella</span>
@@ -407,15 +410,15 @@ export default function Home() {
           <div className="sectionHead"><h2>Arma tu desayuno</h2><p>Completa tu six con una bebida preparada al momento.</p></div>
           <div className="grid3">
             <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con malteada" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
-              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Malteada</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con té" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
-              {teaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={teaProduct.image} alt="Té Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {teaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={teaProduct.image} alt="Té Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Té</h3><p>{teaProduct?.price ? `$${teaProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card cardClickable" role="button" tabIndex={0} aria-label="Armar mi desayuno con aloe" onClick={() => { track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); track('cta_click', { cta: 'breakfast_order' }); setOpenComboId('arma-tu-desayuno'); } }}>
-              {aloeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={aloeProduct.image} alt="Aloe Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+              {aloeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={aloeProduct.image} alt="Aloe Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Aloe</h3><p>{aloeProduct?.price ? `$${aloeProduct.price}` : 'Consultar'}</p>
             </div>
           </div>
@@ -430,19 +433,19 @@ export default function Home() {
           <div className="sectionHead"><h2>Y hay mucho más para pedir</h2><p>Malteadas, waffles, crepas y especialidades.</p></div>
           <div className="grid4">
             <div className="card">
-              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
+              {shakeProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={shakeProduct.image} alt="Malteada Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Malteadas</h3><p>{shakeProduct?.price ? `$${shakeProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
-              {waffleProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={waffleProduct.image} alt="Waffle Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
+              {waffleProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={waffleProduct.image} alt="Waffle Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Waffles</h3><p>{waffleProduct?.price ? `$${waffleProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
-              {crepaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={crepaProduct.image} alt="Crepa Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div>}
+              {crepaProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={crepaProduct.image} alt="Crepa Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" {...protectedImageProps(imagesLocked)} /></div>}
               <h3>Crepas</h3><p>{crepaProduct?.price ? `$${crepaProduct.price}` : 'Consultar'}</p>
             </div>
             <div className="card">
-              {specialProduct?.image ? <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={specialProduct.image} alt="Especialidades Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" /></div> : <div className="icon">🌯</div>}
+              {specialProduct?.image ? <div className="sceneMedia" style={{ aspectRatio: '1 / 1', marginBottom: 14 }}><Image src={specialProduct.image} alt="Especialidades Club BASA" fill sizes="(max-width: 850px) 100vw, 25vw" {...protectedImageProps(imagesLocked)} /></div> : <div className="icon">🌯</div>}
               <h3>Especialidades</h3><p>Rollitos salados y más, sobre pedido.</p>
             </div>
           </div>
@@ -455,7 +458,7 @@ export default function Home() {
         <div className="categoryTabsWrap"><div className="categoryTabs" ref={categoryTabsRef} role="tablist" aria-label="Categorías del menú"><button className={activeCategory === 'Todos' ? 'active' : ''} onClick={() => setActiveCategory('Todos')}>Todos</button>{visibleCategories.map((category) => <button key={category.id} className={activeCategory === category.name ? 'active' : ''} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>{showTabsFade && <div className="categoryTabsFade" aria-hidden="true">›</div>}</div>
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
-          {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw"/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
+          {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw" {...protectedImageProps(imagesLocked)}/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
           <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div>{getVariantGroup(product.id) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{variantQtyFor(product.id) > 0 ? `${variantQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : <div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>}
         </article>)}</div>
       </div></Reveal>}</section>
@@ -465,9 +468,9 @@ export default function Home() {
         <div className="container">
           <div className="sectionHead"><h2>La experiencia Club BASA</h2><p>Sabor, cercanía y confianza en cada pedido.</p></div>
           <div className="grid3">
-            {menuPosterProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={menuPosterProduct.image} alt="Menú saludable Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
-            <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={heroImage} alt="Panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" /></div>
-            {specialProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={specialProduct.image} alt={specialProduct.name} fill sizes="(max-width: 850px) 100vw, 33vw" /></div>}
+            {menuPosterProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={menuPosterProduct.image} alt="Menú saludable Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>}
+            <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={heroImage} alt="Panquecitos Club BASA" fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>
+            {specialProduct?.image && <div className="sceneMedia" style={{ aspectRatio: '3 / 4' }}><Image src={specialProduct.image} alt={specialProduct.name} fill sizes="(max-width: 850px) 100vw, 33vw" {...protectedImageProps(imagesLocked)} /></div>}
           </div>
           <div className="sceneSub" style={{ display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -572,7 +575,8 @@ export default function Home() {
           sizes="(max-width: 760px) 100vw, 760px"
           priority
           draggable={false}
-          style={{ transform: `translate(${imageView.pan.x}px, ${imageView.pan.y}px) scale(${imageView.zoom})`, transition: isPanningImage ? 'none' : 'transform .15s ease-out' }}
+          onContextMenu={imagesLocked ? (event) => event.preventDefault() : undefined}
+          style={{ transform: `translate(${imageView.pan.x}px, ${imageView.pan.y}px) scale(${imageView.zoom})`, transition: isPanningImage ? 'none' : 'transform .15s ease-out', ...(imagesLocked ? IMAGE_LOCK_STYLE : {}) }}
         /></div> : <div className="productModalImage productModalImageEmpty">Sin imagen disponible</div>}
         <div className="productModalBody">
           <div className="menuTop"><h2 id="product-modal-title">{selectedProduct.name}</h2>{!isInternalCategory(selectedProduct.category) && <span className="tag">{selectedProduct.category}</span>}</div>

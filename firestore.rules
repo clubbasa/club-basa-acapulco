@@ -62,5 +62,12 @@ service cloud.firestore {
       // credentials. Blocking direct client writes prevents forged metrics.
       allow write: if false;
     }
+
+    match /settings/{id} {
+      // Público de lectura porque cualquier visitante del sitio (sin sesión)
+      // necesita saber si la protección de imágenes está activa.
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
