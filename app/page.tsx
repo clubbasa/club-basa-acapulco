@@ -2,6 +2,10 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+// Se importa desde firebase-auth (no firebase.ts) para no inicializar Firestore aquí —
+// mismo patrón aislado que ya usa app/login/page.tsx.
+import { auth } from '@/lib/firebase-auth';
 import { getCatalog, getFallbackCategories, getFallbackProducts, type CatalogProduct } from '@/lib/catalog';
 import { getProductVideoEmbed } from '@/lib/video';
 import { buildOrder, waLink } from '@/lib/whatsapp';
@@ -53,12 +57,20 @@ export default function Home() {
   const [showTabsFade, setShowTabsFade] = useState(false);
   const [heroPassed, setHeroPassed] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('clubbasa-theme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     setTheme(stored === 'dark' || stored === 'light' ? stored : (systemDark ? 'dark' : 'light'));
   }, []);
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  const handleVipPromoClick = () => {
+    track('cta_click', { cta: 'vip_promo' });
+    window.location.href = user ? '/mi-cuenta' : '/registro';
+  };
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -323,7 +335,7 @@ export default function Home() {
         title="Clic: inicio · Doble clic/tap: acceso administrativo"
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
-      <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a></nav>
+      <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir por WhatsApp</a>
       <button type="button" className="themeToggle" aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} onClick={toggleTheme}>
         {theme === 'dark'
@@ -333,7 +345,7 @@ export default function Home() {
       <button type="button" className="navToggle" aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={mobileMenuOpen} aria-controls="mobile-menu" onClick={() => setMobileMenuOpen((open) => !open)}>{mobileMenuOpen ? '✕' : '☰'}</button>
     </div>
     {mobileMenuOpen && <nav id="mobile-menu" className="mobileMenu" aria-label="Menú móvil" onClick={() => setMobileMenuOpen(false)}>
-      <a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a>
+      <a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a>
     </nav>}
     </header>
 
