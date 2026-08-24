@@ -9,6 +9,7 @@ import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, ty
 import { productVideoProviders } from '@/lib/video';
 import { waLinkTo } from '@/lib/whatsapp';
 import { getSiteSettings, updateSiteSettings } from '@/lib/settings';
+import { getOptionGroups, getProductOptions, saveOptionGroup, removeOptionGroup, saveProductOption, removeProductOption, type OptionGroup, type ProductOption, type SelectionMode } from '@/lib/options';
 
 const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', desayuno: 'Arma tu desayuno', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
 const CTA_LABELS: Record<string, string> = { header_order: 'Header · Pedir', hero_order: 'Hero · Pedir ahora', hero_menu: 'Hero · Ver menú', six_order: 'Six · Quiero mi six', breakfast_order: 'Desayuno · Armar', menu_explore: 'Categorías · Ver menú', final_order: 'Cierre · Pedir', final_menu: 'Cierre · Ver menú', sticky_order: 'Sticky móvil · Pedir', envios_cotizar: 'Envíos · Cotizar', experiencia_contacto: 'Experiencia · WhatsApp' };
@@ -32,6 +33,9 @@ const blankCategory: CatalogCategory = { id: '', name: '', slug: '', active: tru
 const blankPromotion: Promotion = { id: '', title: '', description: '', type: 'promo', active: true, sortOrder: 0 };
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 1024 * 1024 * 1024;
+const SELECTION_MODE_LABELS: Record<SelectionMode, string> = { single: 'Una sola opción', multiple: 'Repartir cantidad entre opciones' };
+const blankOptionGroup: OptionGroup = { id: '', productId: '', label: '', selectionMode: 'single', required: false, minSelections: 0, maxSelections: 1, allowDuplicates: false, sortOrder: 0, active: true };
+const blankProductOption: ProductOption = { id: '', groupId: '', productId: '', label: '', priceDelta: 0, active: true, available: true, sortOrder: 0 };
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null);
@@ -66,6 +70,13 @@ export default function Admin() {
   const [adminProfileOpen, setAdminProfileOpen] = useState(false);
   const [imagesDownloadable, setImagesDownloadable] = useState(false);
   const [savingSiteSettings, setSavingSiteSettings] = useState(false);
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
+  const [optionsProductId, setOptionsProductId] = useState('');
+  const [optionGroup, setOptionGroup] = useState<OptionGroup>(blankOptionGroup);
+  const [productOption, setProductOption] = useState<ProductOption>(blankProductOption);
+  const [savingOptionGroup, setSavingOptionGroup] = useState(false);
+  const [savingProductOption, setSavingProductOption] = useState(false);
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -148,6 +159,61 @@ export default function Admin() {
     }
   };
 
+  const loadOptionGroups = async () => setOptionGroups(await getOptionGroups());
+  const loadProductOptions = async () => setProductOptions(await getProductOptions());
+
+  const saveOptionGroupForm = async () => {
+    if (!optionGroup.id || !optionsProductId) return setMessage('Elige un producto y escribe un ID para el grupo.');
+    setSavingOptionGroup(true);
+    try {
+      await saveOptionGroup({ ...optionGroup, productId: optionsProductId });
+      await loadOptionGroups();
+      setOptionGroup({ ...blankOptionGroup, productId: optionsProductId });
+      setMessage('Grupo de opciones guardado.');
+    } catch (error) {
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'No se pudo guardar el grupo.');
+    } finally {
+      setSavingOptionGroup(false);
+    }
+  };
+
+  const removeOptionGroupAndReload = async (id: string) => {
+    await removeOptionGroup(id);
+    await loadOptionGroups();
+  };
+
+  const saveProductOptionForm = async () => {
+    if (!productOption.id || !productOption.groupId) return setMessage('Elige un grupo y escribe un ID para la opción.');
+    setSavingProductOption(true);
+    try {
+      await saveProductOption({ ...productOption, productId: optionsProductId });
+      await loadProductOptions();
+      setProductOption({ ...blankProductOption, productId: optionsProductId, groupId: productOption.groupId });
+      setMessage('Opción guardada.');
+    } catch (error) {
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'No se pudo guardar la opción.');
+    } finally {
+      setSavingProductOption(false);
+    }
+  };
+
+  const removeProductOptionAndReload = async (id: string) => {
+    await removeProductOption(id);
+    await loadProductOptions();
+  };
+
+  const toggleOptionActive = async (item: ProductOption, active: boolean) => {
+    await saveProductOption({ ...item, active });
+    await loadProductOptions();
+  };
+
+  const toggleOptionAvailable = async (item: ProductOption, available: boolean) => {
+    await saveProductOption({ ...item, available });
+    await loadProductOptions();
+  };
+
   const loadContactMessages = async () => {
     const snap = await getDocs(query(collection(db, 'contacts'), orderBy('createdAt', 'desc'), limit(50)));
     setContactMessages(snap.docs.map((item) => ({ id: item.id, ...item.data() } as ContactMessage)));
@@ -193,7 +259,7 @@ export default function Admin() {
         setIsAdmin(enabled);
         if (enabled) {
           setAdminProfile({ name: adminDoc.data()?.name, whatsapp: adminDoc.data()?.whatsapp });
-          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages(), loadSiteSettings()]);
+          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages(), loadSiteSettings(), loadOptionGroups(), loadProductOptions()]);
         }
       } catch (error) {
         console.error(error);
@@ -219,6 +285,8 @@ export default function Admin() {
   }, [promotionImagePreview]);
 
   const categoryNames = useMemo(() => categories.map((item) => item.name), [categories]);
+  const groupsForProduct = useMemo(() => optionGroups.filter((item) => item.productId === optionsProductId), [optionGroups, optionsProductId]);
+  const optionsForGroup = (groupId: string) => productOptions.filter((item) => item.groupId === groupId);
 
   const resetImageSelection = () => {
     setSelectedImage(null);
@@ -545,6 +613,7 @@ export default function Admin() {
       <div className="field"><label>Nombre</label><input value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} /></div>
       <div className="field"><label>Categoría</label><select value={product.category} onChange={(e) => setProduct({ ...product, category: e.target.value })}><option value="">Seleccionar</option>{categoryNames.map((name) => <option key={name}>{name}</option>)}</select></div>
       <div className="field"><label>Precio</label><input type="number" min="0" value={product.price} onChange={(e) => setProduct({ ...product, price: Number(e.target.value) })} /></div>
+      <div className="field"><label>SKU</label><input value={product.sku || ''} onChange={(e) => setProduct({ ...product, sku: e.target.value.trim().toUpperCase() })} placeholder="BASA-MAL-001" /></div>
       <div className="field"><label>Disponibilidad</label><input value={product.availability || ''} onChange={(e) => setProduct({ ...product, availability: e.target.value })} placeholder="Sobre pedido" /></div>
       <div className="field"><label>Orden</label><input type="number" value={product.sortOrder} onChange={(e) => setProduct({ ...product, sortOrder: Number(e.target.value) })} /></div>
     </div><div className="field"><label>Descripción</label><textarea value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} rows={3}/></div>
@@ -571,6 +640,83 @@ export default function Admin() {
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 18 }}><button type="button" className="btn primary" onClick={saveProductForm} disabled={savingProduct || uploadingVideo}>{savingProduct ? 'Guardando…' : 'Guardar producto'}</button>{selectedImage && <button type="button" className="btn secondary" onClick={resetImageSelection} disabled={savingProduct}>Cancelar imagen</button>}</div></div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Categorías</h2><p>{categories.length} categorías en Firestore.</p></div><div className="grid3">{categories.map((item) => <div className="card" key={item.id}><strong>{item.name}</strong><p>{item.slug}</p><div style={{ display: 'flex', gap: 8 }}><button type="button" className="btn secondary" onClick={() => setCategory(item)}>Editar</button><button type="button" className="btn secondary" onClick={async () => { await removeCategory(item.id); await load(); }}>Eliminar</button></div></div>)}</div><div className="card" style={{ marginTop: 18 }}><h3>{category.id ? 'Editar categoría' : 'Nueva categoría'}</h3><div className="grid3"><div className="field"><label>ID</label><input value={category.id} onChange={(e) => setCategory({ ...category, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })}/></div><div className="field"><label>Nombre</label><input value={category.name} onChange={(e) => setCategory({ ...category, name: e.target.value })}/></div><div className="field"><label>Orden</label><input type="number" value={category.sortOrder} onChange={(e) => setCategory({ ...category, sortOrder: Number(e.target.value) })}/></div></div><button type="button" className="btn primary" onClick={saveCategoryForm}>Guardar categoría</button></div></section>
+    <section style={{ padding: '25px 0' }}>
+      <div className="sectionHead"><h2>Ingredientes y opciones</h2><p>Configura sabores/toppings de un producto y marca disponibilidad sin necesitar un despliegue.</p></div>
+      <div className="field" style={{ maxWidth: 320 }}>
+        <label>Producto</label>
+        <select value={optionsProductId} onChange={(e) => { setOptionsProductId(e.target.value); setOptionGroup({ ...blankOptionGroup, productId: e.target.value }); setProductOption({ ...blankProductOption, productId: e.target.value, groupId: '' }); }}>
+          <option value="">Selecciona un producto</option>
+          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+
+      {optionsProductId && <>
+        <div className="grid3" style={{ marginTop: 18 }}>
+          {groupsForProduct.map((group) => (
+            <div className="card" key={group.id}>
+              <strong>{group.label}</strong>
+              <p>{SELECTION_MODE_LABELS[group.selectionMode]} · {group.minSelections}-{group.maxSelections} · {group.required ? 'Obligatorio' : 'Opcional'}{group.allowDuplicates ? ' · Permite repetir opción' : ''}</p>
+              <small>{group.active ? 'Activo' : 'Oculto'}</small>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button type="button" className="btn secondary" onClick={() => setOptionGroup(group)}>Editar</button>
+                <button type="button" className="btn secondary" onClick={() => removeOptionGroupAndReload(group.id)}>Eliminar</button>
+              </div>
+
+              <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                <strong style={{ fontSize: 14 }}>Opciones</strong>
+                {optionsForGroup(group.id).map((option) => (
+                  <div key={option.id} style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)' }}>
+                    <p style={{ margin: 0 }}>{option.label}{option.priceDelta ? ` (+$${option.priceDelta})` : ''}</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                      <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={option.active} onChange={(e) => toggleOptionActive(option, e.target.checked)} /> Activa</label>
+                      <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={option.available} onChange={(e) => toggleOptionAvailable(option, e.target.checked)} /> Disponible</label>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                      <button type="button" className="cartLineLink" onClick={() => setProductOption(option)}>Editar</button>
+                      <button type="button" className="cartLineLink cartLineRemove" onClick={() => removeProductOptionAndReload(option.id)}>Eliminar</button>
+                    </div>
+                  </div>
+                ))}
+                {optionsForGroup(group.id).length === 0 && <p className="small" style={{ marginTop: 8 }}>Sin opciones todavía.</p>}
+                <button type="button" className="btn secondary" style={{ marginTop: 10, fontSize: 13, padding: '8px 12px' }} onClick={() => setProductOption({ ...blankProductOption, productId: optionsProductId, groupId: group.id })}>+ Agregar opción a este grupo</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {groupsForProduct.length === 0 && <p style={{ marginTop: 14 }}>Este producto todavía no tiene grupos de opciones.</p>}
+
+        <div className="card" style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h3>{optionGroup.id ? 'Editar grupo' : 'Nuevo grupo'}</h3>{optionGroup.id && <button type="button" className="btn secondary" onClick={() => setOptionGroup({ ...blankOptionGroup, productId: optionsProductId })}>Nuevo grupo</button>}</div>
+          <div className="grid3">
+            <div className="field"><label>ID único</label><input value={optionGroup.id} onChange={(e) => setOptionGroup({ ...optionGroup, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })} placeholder="malteada-sabores" /></div>
+            <div className="field"><label>Etiqueta</label><input value={optionGroup.label} onChange={(e) => setOptionGroup({ ...optionGroup, label: e.target.value })} placeholder="Elige tus sabores" /></div>
+            <div className="field"><label>Modo</label><select value={optionGroup.selectionMode} onChange={(e) => setOptionGroup({ ...optionGroup, selectionMode: e.target.value as SelectionMode })}>{Object.entries(SELECTION_MODE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+            <div className="field"><label>Mínimo</label><input type="number" min="0" value={optionGroup.minSelections} onChange={(e) => setOptionGroup({ ...optionGroup, minSelections: Number(e.target.value) })} /></div>
+            <div className="field"><label>Máximo</label><input type="number" min="1" value={optionGroup.maxSelections} onChange={(e) => setOptionGroup({ ...optionGroup, maxSelections: Number(e.target.value) })} /></div>
+            <div className="field"><label>Orden</label><input type="number" value={optionGroup.sortOrder} onChange={(e) => setOptionGroup({ ...optionGroup, sortOrder: Number(e.target.value) })} /></div>
+          </div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}><input type="checkbox" checked={optionGroup.required} onChange={(e) => setOptionGroup({ ...optionGroup, required: e.target.checked })} /> Obligatorio</label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, cursor: 'pointer' }}><input type="checkbox" checked={optionGroup.allowDuplicates} onChange={(e) => setOptionGroup({ ...optionGroup, allowDuplicates: e.target.checked })} /> Permitir elegir la misma opción varias veces</label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, cursor: 'pointer' }}><input type="checkbox" checked={optionGroup.active} onChange={(e) => setOptionGroup({ ...optionGroup, active: e.target.checked })} /> Activo (visible para el cliente)</label>
+          <div style={{ marginTop: 14 }}><button type="button" className="btn primary" onClick={saveOptionGroupForm} disabled={savingOptionGroup}>{savingOptionGroup ? 'Guardando…' : 'Guardar grupo'}</button></div>
+        </div>
+
+        <div className="card" style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}><h3>{productOption.id ? 'Editar opción' : 'Nueva opción'}</h3>{productOption.id && <button type="button" className="btn secondary" onClick={() => setProductOption({ ...blankProductOption, productId: optionsProductId, groupId: productOption.groupId })}>Nueva opción</button>}</div>
+          <div className="grid3">
+            <div className="field"><label>Grupo</label><select value={productOption.groupId} onChange={(e) => setProductOption({ ...productOption, groupId: e.target.value })}><option value="">Selecciona un grupo</option>{groupsForProduct.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}</select></div>
+            <div className="field"><label>ID único</label><input value={productOption.id} onChange={(e) => setProductOption({ ...productOption, id: e.target.value.trim().toLowerCase().replace(/\s+/g, '-') })} placeholder="fresa" /></div>
+            <div className="field"><label>Etiqueta</label><input value={productOption.label} onChange={(e) => setProductOption({ ...productOption, label: e.target.value })} placeholder="Fresa" /></div>
+            <div className="field"><label>Costo adicional</label><input type="number" min="0" value={productOption.priceDelta} onChange={(e) => setProductOption({ ...productOption, priceDelta: Number(e.target.value) })} /></div>
+            <div className="field"><label>Orden</label><input type="number" value={productOption.sortOrder} onChange={(e) => setProductOption({ ...productOption, sortOrder: Number(e.target.value) })} /></div>
+          </div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}><input type="checkbox" checked={productOption.active} onChange={(e) => setProductOption({ ...productOption, active: e.target.checked })} /> Activa (visible)</label>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, cursor: 'pointer' }}><input type="checkbox" checked={productOption.available} onChange={(e) => setProductOption({ ...productOption, available: e.target.checked })} /> Disponible (no agotada)</label>
+          <div style={{ marginTop: 14 }}><button type="button" className="btn primary" onClick={saveProductOptionForm} disabled={savingProductOption}>{savingProductOption ? 'Guardando…' : 'Guardar opción'}</button></div>
+        </div>
+      </>}
+    </section>
+
     <p><a href="/">← Volver al catálogo</a></p>
   </main>;
 }
