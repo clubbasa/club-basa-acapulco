@@ -69,7 +69,11 @@ export default function CartDrawer({ lines, subtotal, count, open, onOpenChange,
                   <li key={line.lineId} className="cartLine">
                     <div className="cartLineInfo">
                       <strong>{line.name}</strong>
-                      {line.kind === 'combo' && <p className="small">{line.components.map((component) => component.name).join(' · ')}</p>}
+                      {line.kind === 'combo' && <p className="small">{line.components.map((component) => {
+                        const qtyLabel = component.qty > 1 ? `${component.name} x${component.qty}` : component.name;
+                        const detail = component.configuration?.flatMap((group) => group.selections.map((selection) => (selection.quantity > 1 ? `${selection.name} x${selection.quantity}` : selection.name))).join(', ');
+                        return detail ? `${qtyLabel} (${detail})` : qtyLabel;
+                      }).join(' · ')}</p>}
                       {line.kind === 'configured' && <p className="small">{line.configuration.flatMap((group) => group.selections.map((selection) => selection.quantity > 1 ? `${selection.name} x${selection.quantity}` : selection.name)).join(' · ')}</p>}
                       <span className="cartLinePrice">${line.unitPrice * line.qty}</span>
                     </div>
