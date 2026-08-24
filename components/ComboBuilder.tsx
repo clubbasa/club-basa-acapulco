@@ -2,34 +2,53 @@
 
 import { useState } from 'react';
 import type { CatalogProduct } from '@/lib/catalog';
-import { resolveComboOptionPrice, slotQtyTotal, type ComboDefinition, type ComboSelections, type ComboSlot, type ComboSlotOption } from '@/lib/combos';
+import { computeComboTotal, type ComboDefinition, type ComboSelections, type ComboSlot, type ComboSlotSelection } from '@/lib/combos';
+import { hasOptionGroups, type OptionGroup, type ProductOption } from '@/lib/options';
+import ProductConfigurator from './ProductConfigurator';
 
 type Props = {
   products: CatalogProduct[];
   combo: ComboDefinition;
+  optionGroups: OptionGroup[];
+  productOptions: ProductOption[];
   hasSix: boolean;
   initialSelections?: ComboSelections;
   onAdd: (selections: ComboSelections) => void;
   onClose: () => void;
 };
 
-export default function ComboBuilder({ products, combo, hasSix, initialSelections, onAdd, onClose }: Props) {
+export default function ComboBuilder({ products, combo, optionGroups, productOptions, hasSix, initialSelections, onAdd, onClose }: Props) {
   const [step, setStep] = useState(initialSelections ? combo.slots.length : 0);
   const [selections, setSelections] = useState<ComboSelections>(initialSelections ?? {});
+  const [configuringProductId, setConfiguringProductId] = useState<string | null>(null);
 
   const currentSlot: ComboSlot | undefined = combo.slots[step];
   const isSummary = !currentSlot;
-  const canAdvance = !currentSlot || !currentSlot.required || slotQtyTotal(selections, currentSlot.id) > 0;
+  const slotSelections = (slotId: string) => selections[slotId] ?? [];
+  const slotHasCapacity = (slot: ComboSlot) => slot.allowMultipleProducts || slotSelections(slot.id).length === 0;
+  const canAdvance = !currentSlot || !currentSlot.required || slotSelections(currentSlot.id).some((item) => item.qty > 0);
 
-  const setOptionQty = (slotId: string, optionId: string, qty: number) => {
-    setSelections((current) => ({ ...current, [slotId]: { ...current[slotId], [optionId]: Math.max(0, qty) } }));
+  const upsertInSlot = (slotId: string, item: ComboSlotSelection) => {
+    setSelections((current) => {
+      const existing = current[slotId] ?? [];
+      const idx = existing.findIndex((entry) => entry.productId === item.productId);
+      const next = idx >= 0 ? existing.map((entry, i) => (i === idx ? item : entry)) : [...existing, item];
+      return { ...current, [slotId]: next };
+    });
   };
 
-  const priceOf = (option: ComboSlotOption) => resolveComboOptionPrice(products, option);
-  const total = combo.slots.reduce((sum, slot) => {
-    const slotSelection = selections[slot.id] ?? {};
-    return sum + slot.options.reduce((slotSum, option) => slotSum + priceOf(option) * (slotSelection[option.id] ?? 0), 0);
-  }, 0);
+  const removeFromSlot = (slotId: string, productId: string) => {
+    setSelections((current) => ({ ...current, [slotId]: (current[slotId] ?? []).filter((entry) => entry.productId !== productId) }));
+  };
+
+  const setSimpleQty = (slotId: string, product: CatalogProduct, qty: number) => {
+    if (qty <= 0) { removeFromSlot(slotId, product.id); return; }
+    upsertInSlot(slotId, { productId: product.id, name: product.name, price: product.price, qty });
+  };
+
+  const total = computeComboTotal(selections);
+
+  const configuringProduct = configuringProductId ? products.find((product) => product.id === configuringProductId) : undefined;
 
   return (
     <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -39,23 +58,57 @@ export default function ComboBuilder({ products, combo, hasSix, initialSelection
           <div className="menuTop"><h2 id="combo-builder-title">{combo.name}</h2></div>
           <div className="comboSteps" aria-hidden="true">{combo.slots.map((slot, i) => <span key={slot.id} className={i <= step ? 'comboStep active' : 'comboStep'} />)}</div>
 
-          {currentSlot && <div className="comboSlot">
+          {currentSlot && configuringProduct && (
+            <ProductConfigurator
+              product={configuringProduct}
+              groups={optionGroups.filter((group) => group.productId === configuringProduct.id && group.active !== false).sort((a, b) => a.sortOrder - b.sortOrder)}
+              options={productOptions.filter((option) => option.productId === configuringProduct.id && option.active !== false)}
+              initial={(() => {
+                const existing = slotSelections(currentSlot.id).find((entry) => entry.productId === configuringProduct.id);
+                return existing?.configuration ? { configuration: existing.configuration, qty: existing.qty } : undefined;
+              })()}
+              onCancel={() => setConfiguringProductId(null)}
+              onAdd={(configuration, unitPrice, qty) => {
+                upsertInSlot(currentSlot.id, { productId: configuringProduct.id, name: configuringProduct.name, price: unitPrice, qty, configuration });
+                setConfiguringProductId(null);
+              }}
+            />
+          )}
+
+          {currentSlot && !configuringProduct && <div className="comboSlot">
             <p className="variantGroupLabel">Paso {step + 1}: {currentSlot.title}{!currentSlot.required && ' (opcional)'}</p>
             <ul className="comboOptionList">
-              {currentSlot.options.map((option) => {
-                const price = priceOf(option);
-                const qty = selections[currentSlot.id]?.[option.id] ?? 0;
-                const isFree = price === 0;
+              {currentSlot.productIds.map((productId) => {
+                const product = products.find((p) => p.id === productId);
+                if (!product) return null;
+                const existing = slotSelections(currentSlot.id).find((entry) => entry.productId === productId);
+                if (!slotHasCapacity(currentSlot) && !existing) return null;
+
+                if (hasOptionGroups(productId, optionGroups)) {
+                  const detail = existing?.configuration?.flatMap((group) => group.selections.map((selection) => (selection.quantity > 1 ? `${selection.name} x${selection.quantity}` : selection.name))).join(', ');
+                  return (
+                    <li key={productId} className="comboOptionRow">
+                      <span>{product.name}{detail ? ` — ${detail}` : ''}</span>
+                      <div className="cartLineButtons">
+                        {existing && <button type="button" className="cartLineLink cartLineRemove" onClick={() => removeFromSlot(currentSlot.id, productId)}>Quitar</button>}
+                        <button type="button" className="btn secondary" onClick={() => setConfiguringProductId(productId)}>{existing ? 'Editar' : 'Agregar'}</button>
+                      </div>
+                    </li>
+                  );
+                }
+
+                const isFree = product.price === 0;
                 const freeLocked = isFree && !hasSix;
+                const qty = existing?.qty ?? 0;
                 const addDisabled = isFree && (freeLocked || qty >= 1);
-                const priceLabel = isFree ? (freeLocked ? ' — gratis (con tu six)' : ' — gratis') : ` — $${price}`;
+                const priceLabel = isFree ? (freeLocked ? ' — gratis (con tu six)' : ' — gratis') : ` — $${product.price}`;
                 return (
-                  <li key={option.id} className="comboOptionRow">
-                    <span>{option.label}{priceLabel}</span>
+                  <li key={productId} className="comboOptionRow">
+                    <span>{product.name}{priceLabel}</span>
                     <div className="qty">
-                      <button type="button" aria-label={`Quitar ${option.label}`} onClick={() => setOptionQty(currentSlot.id, option.id, qty - 1)}>−</button>
+                      <button type="button" aria-label={`Quitar ${product.name}`} onClick={() => setSimpleQty(currentSlot.id, product, qty - 1)}>−</button>
                       <span>{qty}</span>
-                      <button type="button" aria-label={`Agregar ${option.label}`} disabled={addDisabled} onClick={() => setOptionQty(currentSlot.id, option.id, qty + 1)}>+</button>
+                      <button type="button" aria-label={`Agregar ${product.name}`} disabled={addDisabled} onClick={() => setSimpleQty(currentSlot.id, product, qty + 1)}>+</button>
                     </div>
                   </li>
                 );
@@ -71,11 +124,14 @@ export default function ComboBuilder({ products, combo, hasSix, initialSelection
             <p className="variantGroupLabel">Resumen de tu desayuno</p>
             <ul className="comboSummaryList">
               {combo.slots.map((slot) => {
-                const slotSelection = selections[slot.id] ?? {};
-                const chosen = slot.options.filter((option) => (slotSelection[option.id] ?? 0) > 0);
+                const items = slotSelections(slot.id).filter((item) => item.qty > 0);
                 return (
                   <li key={slot.id}>
-                    <strong>{slot.title}:</strong> {chosen.length ? chosen.map((option) => (slotSelection[option.id] > 1 ? `${option.label} x${slotSelection[option.id]}` : option.label)).join(', ') : 'Sin selección'}
+                    <strong>{slot.title}:</strong> {items.length ? items.map((item) => {
+                      const detail = item.configuration?.flatMap((group) => group.selections.map((selection) => (selection.quantity > 1 ? `${selection.name} x${selection.quantity}` : selection.name))).join(', ');
+                      const label = item.qty > 1 ? `${item.name} x${item.qty}` : item.name;
+                      return detail ? `${label} (${detail})` : label;
+                    }).join(', ') : 'Sin selección'}
                   </li>
                 );
               })}

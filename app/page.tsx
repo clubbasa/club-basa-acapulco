@@ -287,13 +287,15 @@ export default function Home() {
       const combo = getCombo(line.comboId);
       if (!combo) return;
       const selections: ComboSelections = {};
-      combo.slots.forEach((slot) => {
-        const slotSelection: Record<string, number> = {};
-        line.components.filter((c) => c.slotId === slot.id).forEach((component) => {
-          const option = slot.options.find((o) => o.productId === component.productId && o.variantId === component.variantId);
-          if (option) slotSelection[option.id] = component.qty;
-        });
-        selections[slot.id] = slotSelection;
+      line.components.forEach((component) => {
+        const slotItems = selections[component.slotId] ?? [];
+        selections[component.slotId] = [...slotItems, {
+          productId: component.productId,
+          name: component.name,
+          price: component.price,
+          qty: component.qty,
+          configuration: component.configuration,
+        }];
       });
       setEditingLineId(line.lineId);
       setEditingComboSelections(selections);
@@ -658,12 +660,14 @@ export default function Home() {
     {openComboId && getCombo(openComboId) && <ComboBuilder
       products={products}
       combo={getCombo(openComboId)!}
+      optionGroups={optionGroups}
+      productOptions={productOptions}
       hasSix={quantityFor('six') > 0}
       initialSelections={editingComboSelections ?? undefined}
       onClose={() => { setOpenComboId(null); setEditingLineId(null); setEditingComboSelections(null); }}
       onAdd={(selections) => {
         const combo = getCombo(openComboId)!;
-        const line = buildComboLine(products, combo, selections);
+        const line = buildComboLine(combo, selections);
         if (editingLineId) {
           const originalQty = cartLines.find((l) => l.lineId === editingLineId)?.qty ?? 1;
           replaceCombo(editingLineId, line.comboId, line.name, line.unitPrice, line.components, originalQty);

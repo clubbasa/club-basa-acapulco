@@ -13,6 +13,7 @@ type Props = {
   options: ProductOption[];
   initial?: { configuration: ConfigurationGroup[]; qty: number };
   onAdd: (configuration: ConfigurationGroup[], unitPrice: number, qty: number) => void;
+  onCancel?: () => void;
 };
 
 function initialSelections(initial?: { configuration: ConfigurationGroup[] }): Selections {
@@ -25,7 +26,7 @@ function initialSelections(initial?: { configuration: ConfigurationGroup[] }): S
   return map;
 }
 
-export default function ProductConfigurator({ product, groups, options, initial, onAdd }: Props) {
+export default function ProductConfigurator({ product, groups, options, initial, onAdd, onCancel }: Props) {
   const [step, setStep] = useState(initial ? groups.length : 0);
   const [selections, setSelections] = useState<Selections>(() => initialSelections(initial));
   const [pendingQty, setPendingQty] = useState(initial?.qty ?? 1);
@@ -95,6 +96,7 @@ export default function ProductConfigurator({ product, groups, options, initial,
         </ul>
         <div className="comboNav">
           {step > 0 && <button type="button" className="btn secondary" onClick={() => setStep((s) => s - 1)}>Atrás</button>}
+          {step === 0 && onCancel && <button type="button" className="btn secondary" onClick={onCancel}>Cancelar</button>}
           <button type="button" className="btn primary" disabled={!canAdvance} onClick={() => setStep((s) => s + 1)}>Siguiente</button>
         </div>
       </div>}
@@ -118,6 +120,7 @@ export default function ProductConfigurator({ product, groups, options, initial,
         </div>
         <div className="comboNav">
           {groups.length > 0 && <button type="button" className="btn secondary" onClick={() => setStep(groups.length - 1)}>Atrás</button>}
+          {onCancel && <button type="button" className="btn secondary" onClick={onCancel}>Cancelar</button>}
           <button type="button" className="btn primary productModalAdd" onClick={() => onAdd(buildConfiguration(), unitPrice, pendingQty)}>{initial ? 'Guardar cambios' : `Agregar — $${unitPrice * pendingQty}`}</button>
         </div>
       </div>}
