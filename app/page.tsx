@@ -15,6 +15,7 @@ import { useImageLock } from '@/hooks/useImageLock';
 import { protectedImageProps, IMAGE_LOCK_STYLE } from '@/lib/image-protection';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
 import { getCombo, buildComboLine, type ComboSelections } from '@/lib/combos';
+import { createOrderRequest, getCustomerContact } from '@/lib/orders';
 import { getOptionGroups, getProductOptions, hasOptionGroups, type OptionGroup, type ProductOption } from '@/lib/options';
 import type { CartLine, VariantCartLine, ConfiguredCartLine } from '@/lib/cart';
 import Reveal from '@/components/Reveal';
@@ -66,6 +67,9 @@ export default function Home() {
   const [heroPassed, setHeroPassed] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [user, setUser] = useState<User | null>(null);
+  const [profileContact, setProfileContact] = useState<{ name?: string; whatsapp?: string }>({});
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem('clubbasa-theme');
@@ -74,6 +78,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  useEffect(() => {
+    if (!user) { setProfileContact({}); return; }
+    let mounted = true;
+    getCustomerContact(user.uid).then((contact) => { if (mounted) setProfileContact(contact); }).catch((error) => console.error(error));
+    return () => { mounted = false; };
+  }, [user]);
 
   const handleVipPromoClick = () => {
     track('cta_click', { cta: 'vip_promo' });
@@ -272,7 +283,17 @@ export default function Home() {
   };
   const handleCheckout = () => {
     track('whatsapp_order', { value: subtotal });
-    window.location.href = waLink(buildOrder(cartLines));
+    const message = buildOrder(cartLines);
+    const contact = user
+      ? { name: profileContact.name, phone: profileContact.whatsapp }
+      : { name: guestName.trim() || undefined, phone: guestPhone.trim() || undefined };
+    // Registro del pedido en Firestore para historial/trazabilidad: es aditivo y
+    // nunca debe bloquear ni retrasar la redirección a WhatsApp, que sigue siendo
+    // el mecanismo real de confirmación del pedido.
+    (user ? user.getIdToken() : Promise.resolve(undefined))
+      .then((token) => createOrderRequest(cartLines, contact, message, token))
+      .catch((error) => console.error('No se pudo registrar el pedido en el historial.', error));
+    window.location.href = waLink(message);
   };
   const handleEditLine = (line: CartLine) => {
     if (line.kind === 'variant' || line.kind === 'configured') {
@@ -696,6 +717,11 @@ export default function Home() {
       onClear={clearCartLines}
       onCheckout={handleCheckout}
       onViewMenu={openMenu}
+      showGuestFields={!user}
+      guestName={guestName}
+      guestPhone={guestPhone}
+      onGuestNameChange={setGuestName}
+      onGuestPhoneChange={setGuestPhone}
     />
   </>;
 }

@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, updateProfile, type User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { getPromotions, type Promotion } from '@/lib/promotions';
+import { getMyOrders, type Order } from '@/lib/orders';
 import { getProductVideoEmbed } from '@/lib/video';
 import Footer from '@/components/Footer';
 import { useImageLock } from '@/hooks/useImageLock';
@@ -18,6 +19,7 @@ export default function MiCuenta() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [editName, setEditName] = useState('');
   const [editWhatsapp, setEditWhatsapp] = useState('');
@@ -43,6 +45,14 @@ export default function MiCuenta() {
         console.error(error);
       } finally {
         setLoading(false);
+      }
+      // Historial de pedidos: visible para cualquier cuenta logueada, sin depender
+      // de la aprobación del admin. Con try/catch propio para no arrastrar al resto
+      // del panel si esta consulta falla.
+      try {
+        setOrders(await getMyOrders(currentUser.uid));
+      } catch (error) {
+        console.error(error);
       }
     });
     return unsubscribe;
@@ -115,6 +125,17 @@ export default function MiCuenta() {
         <button className="btn primary" type="submit" disabled={savingProfile}>{savingProfile ? 'Guardando…' : 'Guardar cambios'}</button>
         {profileMsg && <p className={profileMsg.type === 'error' ? 'error' : 'small'} role={profileMsg.type === 'error' ? 'alert' : undefined} style={{ marginTop: 10 }}>{profileMsg.text}</p>}
       </form>}
+    </section>
+
+    <section style={{ padding: '25px 0' }}>
+      <div className="sectionHead"><h2>Mis pedidos</h2><p>Historial de tus pedidos enviados por WhatsApp.</p></div>
+      {orders.length === 0 ? <p>Todavía no tienes pedidos registrados.</p> : <div className="grid3">
+        {orders.map((order) => <div className="card" key={order.id}>
+          <strong>${order.total}</strong>
+          <p>{order.items.map((item) => item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name).join(', ')}</p>
+          {order.createdAt && <small>{order.createdAt.toDate().toLocaleString('es-MX')}</small>}
+        </div>)}
+      </div>}
     </section>
 
     {isAdmin && <div className="card" style={{ margin: '18px 0' }}>Tu cuenta tiene permisos de administrador. <a href="/admin">Ir al panel de administración →</a></div>}
