@@ -7,6 +7,9 @@ export type CatalogCategory = { id: string; name: string; slug: string; active: 
 
 export type CatalogProduct = Product & {
   active: boolean;
+  /** Identifica el producto base (ej. "BASA-MAL-001"). Nunca cambia por combinación de
+   * sabores/opciones — la configuración elegida se guarda aparte, en la línea del carrito. */
+  sku?: string;
   image?: string;
   /** @deprecated Legacy field removed from Firestore on the next product save. */
   imagePath?: string;

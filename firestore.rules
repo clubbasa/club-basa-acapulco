@@ -69,5 +69,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    match /optionGroups/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /productOptions/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
