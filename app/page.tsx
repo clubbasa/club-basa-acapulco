@@ -121,6 +121,22 @@ export default function Home() {
     return () => { mounted = false; };
   }, []);
 
+  // Deep-link desde un producto compartido: ?producto=<id> abre su ficha directamente.
+  // Reintenta en cada actualización de `products` porque el catálogo real de Firestore
+  // llega después del fallback estático y puede ser el único que tenga ese producto.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('producto');
+    if (!productId) return;
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    setSelectedProduct(product);
+    track('view_product', { product: product.id });
+    const url = new URL(window.location.href);
+    url.searchParams.delete('producto');
+    window.history.replaceState({}, '', url.toString());
+  }, [products]);
+
   useEffect(() => {
     let mounted = true;
     // Igual que el catálogo: un fallo aquí no debe romper la página — los productos
@@ -353,8 +369,11 @@ export default function Home() {
   const stopPanningImage = () => setIsPanningImage(false);
   const resetImageZoom = () => setImageView({ zoom: 1, pan: { x: 0, y: 0 } });
   const share = async () => {
-    const data = { title: 'Club BASA Acapulco', text: 'Mira el menú de Club BASA 👇', url: window.location.href };
-    if (navigator.share) await navigator.share(data); else await navigator.clipboard.writeText(window.location.href);
+    // Solo title + url: si además se manda `text`, el cuadro nativo de compartir en
+    // Windows/Mac mezcla ambos en un solo bloque al elegir "Copiar", dando un
+    // resultado confuso en vez de un link limpio.
+    if (navigator.share) await navigator.share({ title: 'Club BASA Acapulco', url: window.location.href });
+    else await navigator.clipboard.writeText(window.location.href);
     track('share_landing');
   };
   const shareProduct = async (product: CatalogProduct, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -362,11 +381,17 @@ export default function Home() {
     const btn = event.currentTarget;
     btn.classList.add('shareBtnSent');
     setTimeout(() => btn.classList.remove('shareBtnSent'), 700);
-    const text = `Mira ${product.name} de Club BASA Acapulco${product.price ? ` — $${product.price}` : ''}: ${siteUrl}`;
-    const isWindowsDesktop = window.innerWidth > 850 && /Windows/i.test(navigator.userAgent);
+    const productUrl = `${siteUrl}/?producto=${product.id}`;
+    const shareTitle = `${product.name} — Club BASA Acapulco${product.price ? ` ($${product.price})` : ''}`;
     try {
-      if (navigator.share && !isWindowsDesktop) await navigator.share({ title: 'Club BASA Acapulco', text, url: siteUrl });
-      else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      if (navigator.share) {
+        // Igual que en share(): solo title + url, nunca text, para que "Copiar" dé
+        // un link limpio en vez de texto y url mezclados.
+        await navigator.share({ title: shareTitle, url: productUrl });
+      } else {
+        const text = `Mira ${product.name} de Club BASA Acapulco${product.price ? ` — $${product.price}` : ''}: ${productUrl}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      }
     } catch { /* el usuario canceló el cuadro nativo de compartir */ }
     track('share_product', { product: product.id });
   };
