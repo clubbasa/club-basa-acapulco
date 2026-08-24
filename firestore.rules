@@ -47,8 +47,10 @@ service cloud.firestore {
     }
 
     match /orders/{id} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      // El precio y la configuración se congelan en el servidor (Admin SDK, ruta
+      // /api/orders/create) para que nadie pueda alterarlos desde el cliente.
+      allow create: if false;
+      allow read: if isAdmin() || (signedIn() && resource.data.customerId == request.auth.uid);
       allow update, delete: if isAdmin();
     }
 

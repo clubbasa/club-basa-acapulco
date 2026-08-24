@@ -10,6 +10,7 @@ import { productVideoProviders } from '@/lib/video';
 import { waLinkTo } from '@/lib/whatsapp';
 import { getSiteSettings, updateSiteSettings } from '@/lib/settings';
 import { getOptionGroups, getProductOptions, saveOptionGroup, removeOptionGroup, saveProductOption, removeProductOption, type OptionGroup, type ProductOption, type SelectionMode } from '@/lib/options';
+import { getAllOrders, type Order } from '@/lib/orders';
 
 const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', desayuno: 'Arma tu desayuno', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
 const CTA_LABELS: Record<string, string> = { header_order: 'Header · Pedir', hero_order: 'Hero · Pedir ahora', hero_menu: 'Hero · Ver menú', six_order: 'Six · Quiero mi six', breakfast_order: 'Desayuno · Armar', menu_explore: 'Categorías · Ver menú', final_order: 'Cierre · Pedir', final_menu: 'Cierre · Ver menú', sticky_order: 'Sticky móvil · Pedir', envios_cotizar: 'Envíos · Cotizar', experiencia_contacto: 'Experiencia · WhatsApp' };
@@ -57,6 +58,7 @@ export default function Admin() {
   const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [customerTagFilter, setCustomerTagFilter] = useState('Todos');
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotion, setPromotion] = useState<Promotion>(blankPromotion);
   const [selectedPromotionImage, setSelectedPromotionImage] = useState<File | null>(null);
@@ -232,6 +234,10 @@ export default function Admin() {
     await loadContactMessages();
   };
 
+  const loadOrders = async () => {
+    try { setOrders(await getAllOrders()); } catch (error) { console.error(error); }
+  };
+
   useEffect(() => {
     if (!adminProfile) return;
     setEditAdminName(adminProfile.name || '');
@@ -267,7 +273,7 @@ export default function Admin() {
         setIsAdmin(enabled);
         if (enabled) {
           setAdminProfile({ name: adminDoc.data()?.name, whatsapp: adminDoc.data()?.whatsapp });
-          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages(), loadSiteSettings(), loadOptionGroups(), loadProductOptions()]);
+          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages(), loadSiteSettings(), loadOptionGroups(), loadProductOptions(), loadOrders()]);
         }
       } catch (error) {
         console.error(error);
@@ -569,6 +575,13 @@ export default function Admin() {
         {item.email && <a className="btn secondary" style={{ flex: 1, fontSize: 13, padding: '9px 10px' }} href={`mailto:${item.email}`}>Correo</a>}
       </div>
     </div>)}{visibleCustomers.length === 0 && <p>{customers.length === 0 ? 'Todavía no hay cuentas registradas.' : 'Ningún usuario tiene esta etiqueta.'}</p>}</div></section>
+
+    <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Pedidos</h2><p>{orders.length} pedidos recientes registrados desde el carrito (envío por WhatsApp sigue siendo el canal real de confirmación).</p></div><div className="grid3">{orders.map((item) => <div className="card" key={item.id}>
+      <strong>${item.total}</strong>
+      <p>{item.items.map((lineItem) => lineItem.quantity > 1 ? `${lineItem.name} x${lineItem.quantity}` : lineItem.name).join(', ')}</p>
+      <small>{item.isGuest ? 'Invitado' : 'Cuenta registrada'}{item.customer?.name ? ` · ${item.customer.name}` : ''}{item.customer?.phone ? ` · ${item.customer.phone}` : ''}</small>
+      {item.createdAt && <div><small>{item.createdAt.toDate().toLocaleString('es-MX')}</small></div>}
+    </div>)}{orders.length === 0 && <p>Todavía no hay pedidos registrados.</p>}</div></section>
 
     <section style={{ padding: '25px 0' }}><div className="sectionHead"><h2>Mensajes de contacto</h2><p>{contactMessages.length} mensajes recientes del formulario de contacto.</p></div><div className="grid3">{contactMessages.map((item) => <div className="card" key={item.id}>
       <strong>{item.name || 'Sin nombre'}</strong>

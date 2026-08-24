@@ -18,9 +18,14 @@ type Props = {
   onClear: () => void;
   onCheckout: () => void;
   onViewMenu: () => void;
+  showGuestFields: boolean;
+  guestName: string;
+  guestPhone: string;
+  onGuestNameChange: (value: string) => void;
+  onGuestPhoneChange: (value: string) => void;
 };
 
-export default function CartDrawer({ lines, subtotal, count, open, onOpenChange, onIncrement, onDecrement, onRemove, onDuplicate, onEdit, onClear, onCheckout, onViewMenu }: Props) {
+export default function CartDrawer({ lines, subtotal, count, open, onOpenChange, onIncrement, onDecrement, onRemove, onDuplicate, onEdit, onClear, onCheckout, onViewMenu, showGuestFields, guestName, guestPhone, onGuestNameChange, onGuestPhoneChange }: Props) {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [isCartExpanded, setIsCartExpanded] = useState(true);
 
@@ -99,6 +104,16 @@ export default function CartDrawer({ lines, subtotal, count, open, onOpenChange,
                 <div className="cartSummaryRow cartSummaryTotal"><span>Total</span><span>${subtotal}</span></div>
               </div>
 
+              {showGuestFields && <div className="cartGuestFields">
+                <div className="field">
+                  <label htmlFor="cart-guest-name">Nombre (opcional)</label>
+                  <input id="cart-guest-name" type="text" value={guestName} onChange={(event) => onGuestNameChange(event.target.value)} placeholder="Tu nombre" />
+                </div>
+                <div className="field">
+                  <label htmlFor="cart-guest-phone">WhatsApp (opcional)</label>
+                  <input id="cart-guest-phone" type="tel" value={guestPhone} onChange={(event) => onGuestPhoneChange(event.target.value)} placeholder="744 123 4567" />
+                </div>
+              </div>}
               <button type="button" className="btn primary cartCheckout" onClick={onCheckout}>Enviar pedido por WhatsApp</button>
               <p className="small cartLegalNote">Al enviar tu pedido aceptas nuestros <a href="/terminos-y-condiciones">Términos y Condiciones</a> y nuestra <a href="/politica-cambios-cancelaciones">Política de Cambios y Cancelaciones</a>.</p>
               <button type="button" className="cartClearLink" onClick={() => setConfirmClearOpen(true)}>Vaciar carrito</button>
