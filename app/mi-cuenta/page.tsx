@@ -7,11 +7,14 @@ import { auth, db } from '@/lib/firebase';
 import { getPromotions, type Promotion } from '@/lib/promotions';
 import { getProductVideoEmbed } from '@/lib/video';
 import Footer from '@/components/Footer';
+import { useImageLock } from '@/hooks/useImageLock';
+import { IMAGE_LOCK_STYLE } from '@/lib/image-protection';
 
 type UserProfile = { name?: string; whatsapp?: string; enabled?: boolean };
 
 export default function MiCuenta() {
   const [user, setUser] = useState<User | null>(null);
+  const imagesLocked = useImageLock();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -130,7 +133,13 @@ export default function MiCuenta() {
             return <div className="card" key={item.id}>
               <strong>{item.title}</strong>
               <p>{item.description}</p>
-              {item.image && <img src={item.image} alt={item.title} style={{ width: '100%', borderRadius: 12, marginTop: 8 }} />}
+              {item.image && <img
+                src={item.image}
+                alt={item.title}
+                draggable={!imagesLocked}
+                onContextMenu={imagesLocked ? (event) => event.preventDefault() : undefined}
+                style={{ width: '100%', borderRadius: 12, marginTop: 8, ...(imagesLocked ? IMAGE_LOCK_STYLE : {}) }}
+              />}
               {embed && (embed.kind === 'iframe'
                 ? <iframe src={embed.src} title={item.title} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen style={{ width: '100%', aspectRatio: '16 / 9', border: 0, borderRadius: 12, marginTop: 8 }} />
                 : <video src={embed.src} controls playsInline style={{ width: '100%', borderRadius: 12, marginTop: 8 }} />)}

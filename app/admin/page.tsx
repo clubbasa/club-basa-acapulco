@@ -8,6 +8,7 @@ import { getCatalog, removeCategory, removeProduct, saveCategory, saveProduct, s
 import { getPromotions, removePromotion, savePromotion, uploadPromotionImage, type Promotion, type PromotionType } from '@/lib/promotions';
 import { productVideoProviders } from '@/lib/video';
 import { waLinkTo } from '@/lib/whatsapp';
+import { getSiteSettings, updateSiteSettings } from '@/lib/settings';
 
 const AREA_LABELS: Record<string, string> = { hero: 'Hero', 'producto-estrella': 'Producto estrella', desayuno: 'Arma tu desayuno', categorias: 'Categorías', menu: 'Catálogo', experiencia: 'Experiencia', pedido: 'Pedido (CTA final)' };
 const CTA_LABELS: Record<string, string> = { header_order: 'Header · Pedir', hero_order: 'Hero · Pedir ahora', hero_menu: 'Hero · Ver menú', six_order: 'Six · Quiero mi six', breakfast_order: 'Desayuno · Armar', menu_explore: 'Categorías · Ver menú', final_order: 'Cierre · Pedir', final_menu: 'Cierre · Ver menú', sticky_order: 'Sticky móvil · Pedir', envios_cotizar: 'Envíos · Cotizar', experiencia_contacto: 'Experiencia · WhatsApp' };
@@ -63,6 +64,8 @@ export default function Admin() {
   const [savingAdminProfile, setSavingAdminProfile] = useState(false);
   const [adminProfileMsg, setAdminProfileMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [adminProfileOpen, setAdminProfileOpen] = useState(false);
+  const [imagesDownloadable, setImagesDownloadable] = useState(false);
+  const [savingSiteSettings, setSavingSiteSettings] = useState(false);
   const productEditorRef = useRef<HTMLElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -131,6 +134,20 @@ export default function Admin() {
     setPromotions(await getPromotions());
   };
 
+  const loadSiteSettings = async () => {
+    setImagesDownloadable((await getSiteSettings()).imagesDownloadable);
+  };
+
+  const toggleImagesDownloadable = async (value: boolean) => {
+    setSavingSiteSettings(true);
+    try {
+      await updateSiteSettings({ imagesDownloadable: value });
+      setImagesDownloadable(value);
+    } finally {
+      setSavingSiteSettings(false);
+    }
+  };
+
   const loadContactMessages = async () => {
     const snap = await getDocs(query(collection(db, 'contacts'), orderBy('createdAt', 'desc'), limit(50)));
     setContactMessages(snap.docs.map((item) => ({ id: item.id, ...item.data() } as ContactMessage)));
@@ -176,7 +193,7 @@ export default function Admin() {
         setIsAdmin(enabled);
         if (enabled) {
           setAdminProfile({ name: adminDoc.data()?.name, whatsapp: adminDoc.data()?.whatsapp });
-          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages()]);
+          await Promise.all([load(), loadVisitStats(), loadCustomers(), loadPromotions(), loadContactMessages(), loadSiteSettings()]);
         }
       } catch (error) {
         console.error(error);
@@ -420,6 +437,23 @@ export default function Admin() {
         {adminProfileMsg && <p className={adminProfileMsg.type === 'error' ? 'error' : 'small'} role={adminProfileMsg.type === 'error' ? 'alert' : undefined} style={{ marginTop: 10 }}>{adminProfileMsg.text}</p>}
       </form>}
     </section>
+
+    <section style={{ padding: '25px 0' }}><div className="card">
+      <h2>Protección de imágenes</h2>
+      <p style={{ color: '#6b7280', margin: '4px 0 14px' }}>
+        Cuando está desactivado, el sitio bloquea el clic derecho y el guardado táctil sobre las imágenes del catálogo
+        para dificultar que se descarguen. No es un bloqueo perfecto — cualquiera puede seguir tomando una captura de
+        pantalla — pero evita el guardado directo desde el navegador.
+      </p>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={imagesDownloadable}
+          disabled={savingSiteSettings}
+          onChange={(e) => toggleImagesDownloadable(e.target.checked)}
+        /> Permitir que los visitantes descarguen las imágenes del sitio
+      </label>
+    </div></section>
 
     <section style={{ padding: '25px 0' }}><div className="card">
       <h2>Visitas del sitio</h2>
