@@ -159,8 +159,16 @@ export default function Admin() {
     }
   };
 
-  const loadOptionGroups = async () => setOptionGroups(await getOptionGroups());
-  const loadProductOptions = async () => setProductOptions(await getProductOptions());
+  // Estas dos colecciones son nuevas y dependen de que las reglas de Firestore ya se
+  // hayan publicado — un error aquí (p. ej. mientras eso no pasa) no debe tumbar el resto
+  // del panel de admin, así que se atrapa localmente en vez de dejarlo propagar al
+  // Promise.all que decide si isAdmin sigue siendo true (mismo criterio que loadVisitStats).
+  const loadOptionGroups = async () => {
+    try { setOptionGroups(await getOptionGroups()); } catch (error) { console.error(error); }
+  };
+  const loadProductOptions = async () => {
+    try { setProductOptions(await getProductOptions()); } catch (error) { console.error(error); }
+  };
 
   const saveOptionGroupForm = async () => {
     if (!optionGroup.id || !optionsProductId) return setMessage('Elige un producto y escribe un ID para el grupo.');
