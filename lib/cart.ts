@@ -5,7 +5,10 @@ export type SimpleCartLine = CartLineBase & { kind: 'simple'; productId: string;
 export type VariantCartLine = CartLineBase & { kind: 'variant'; productId: string; variantId: string; name: string; unitPrice: number };
 export type ComboComponent = { slotId: string; label: string; productId: string; variantId?: string; name: string; price: number; qty: number };
 export type ComboCartLine = CartLineBase & { kind: 'combo'; comboId: string; name: string; unitPrice: number; components: ComboComponent[] };
-export type CartLine = SimpleCartLine | VariantCartLine | ComboCartLine;
+export type ConfigurationSelection = { optionId: string; name: string; quantity: number };
+export type ConfigurationGroup = { groupId: string; groupLabel: string; selections: ConfigurationSelection[] };
+export type ConfiguredCartLine = CartLineBase & { kind: 'configured'; productId: string; sku?: string; name: string; unitPrice: number; configuration: ConfigurationGroup[] };
+export type CartLine = SimpleCartLine | VariantCartLine | ComboCartLine | ConfiguredCartLine;
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 export type NewCartLine = DistributiveOmit<CartLine, 'lineId' | 'addedAt' | 'qty'>;
 
@@ -15,6 +18,14 @@ const LEGACY_STORAGE_KEY = 'clubbasa-cart';
 export function computeLineSignature(line: Pick<CartLine, 'kind'> & Partial<CartLine>): string {
   if (line.kind === 'simple') return `simple:${(line as SimpleCartLine).productId}`;
   if (line.kind === 'variant') { const l = line as VariantCartLine; return `variant:${l.productId}:${l.variantId}`; }
+  if (line.kind === 'configured') {
+    const l = line as ConfiguredCartLine;
+    const configKey = [...l.configuration]
+      .map((g) => `${g.groupId}=${[...g.selections].map((s) => `${s.optionId}:${s.quantity}`).sort().join(',')}`)
+      .sort()
+      .join('|');
+    return `configured:${l.productId}:${configKey}`;
+  }
   const l = line as ComboCartLine;
   const componentsKey = [...l.components].map((c) => `${c.slotId}=${c.productId}${c.variantId ? `/${c.variantId}` : ''}:${c.qty}`).sort().join('|');
   return `combo:${l.comboId}:${componentsKey}`;

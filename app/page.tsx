@@ -15,11 +15,13 @@ import { useImageLock } from '@/hooks/useImageLock';
 import { protectedImageProps, IMAGE_LOCK_STYLE } from '@/lib/image-protection';
 import { getVariantGroup, resolveVariantPrice } from '@/lib/variants';
 import { getCombo, buildComboLine, type ComboSelections } from '@/lib/combos';
-import type { CartLine, VariantCartLine } from '@/lib/cart';
+import { getOptionGroups, getProductOptions, hasOptionGroups, type OptionGroup, type ProductOption } from '@/lib/options';
+import type { CartLine, VariantCartLine, ConfiguredCartLine } from '@/lib/cart';
 import Reveal from '@/components/Reveal';
 import ScrollScene from '@/components/ScrollScene';
 import ContactForm from '@/components/ContactForm';
 import VariantPicker from '@/components/VariantPicker';
+import ProductConfigurator from '@/components/ProductConfigurator';
 import ComboBuilder from '@/components/ComboBuilder';
 import CartDrawer from '@/components/CartDrawer';
 import Footer from '@/components/Footer';
@@ -38,11 +40,13 @@ export default function Home() {
   const [catalogStatus, setCatalogStatus] = useState<'loading' | 'firestore' | 'fallback'>('loading');
   const {
     lines: cartLines, subtotal, count: cartCount,
-    addSimple, addVariant, addCombo, setQty: setCartQty,
+    addSimple, addVariant, addCombo, addConfigured, setQty: setCartQty,
     remove: removeCartLine, clear: clearCartLines, duplicate: duplicateCartLine,
-    replaceVariant, replaceCombo,
+    replaceVariant, replaceCombo, replaceConfigured,
   } = useCart(products);
   const imagesLocked = useImageLock();
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [openComboId, setOpenComboId] = useState<string | null>(null);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
@@ -103,6 +107,20 @@ export default function Home() {
         console.warn('Firestore catalog unavailable, using local fallback.', error);
         if (mounted) setCatalogStatus('fallback');
       });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    // Igual que el catálogo: un fallo aquí no debe romper la página — los productos
+    // simplemente se muestran sin opciones configurables hasta que se pueda leer.
+    Promise.all([getOptionGroups(), getProductOptions()])
+      .then(([groups, options]) => {
+        if (!mounted) return;
+        setOptionGroups(groups);
+        setProductOptions(options);
+      })
+      .catch((error) => console.warn('No se pudieron cargar los grupos de opciones.', error));
     return () => { mounted = false; };
   }, []);
 
@@ -236,6 +254,9 @@ export default function Home() {
   }, [categories, products]);
   const quantityFor = (productId: string) => cartLines.find((line) => line.kind === 'simple' && line.productId === productId)?.qty || 0;
   const variantQtyFor = (productId: string) => cartLines.filter((line) => line.kind === 'variant' && line.productId === productId).reduce((sum, line) => sum + line.qty, 0);
+  const configuredQtyFor = (productId: string) => cartLines.filter((line) => line.kind === 'configured' && line.productId === productId).reduce((sum, line) => sum + line.qty, 0);
+  const groupsForProduct = (productId: string) => optionGroups.filter((group) => group.productId === productId && group.active !== false).sort((a, b) => a.sortOrder - b.sortOrder);
+  const optionsForProduct = (productId: string) => productOptions.filter((option) => option.productId === productId && option.active !== false);
   const addProduct = (product: CatalogProduct, delta: number) => {
     if (delta > 0) { addSimple(product, delta); return; }
     const line = cartLines.find((l) => l.kind === 'simple' && l.productId === product.id);
@@ -254,7 +275,7 @@ export default function Home() {
     window.location.href = waLink(buildOrder(cartLines));
   };
   const handleEditLine = (line: CartLine) => {
-    if (line.kind === 'variant') {
+    if (line.kind === 'variant' || line.kind === 'configured') {
       const product = products.find((p) => p.id === line.productId);
       if (!product) return;
       setEditingLineId(line.lineId);
@@ -328,8 +349,10 @@ export default function Home() {
   };
   const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`Mira el menú de Club BASA Acapulco: ${siteUrl}`)}`;
   const selectedVideo = selectedProduct ? getProductVideoEmbed(selectedProduct.videoProvider, selectedProduct.videoUrl) : null;
-  const selectedVariantGroup = selectedProduct ? getVariantGroup(selectedProduct.id) : undefined;
+  const selectedProductGroups = selectedProduct ? groupsForProduct(selectedProduct.id) : [];
+  const selectedVariantGroup = selectedProduct && selectedProductGroups.length === 0 ? getVariantGroup(selectedProduct.id) : undefined;
   const editingVariantLine = editingLineId ? cartLines.find((line): line is VariantCartLine => line.lineId === editingLineId && line.kind === 'variant') : undefined;
+  const editingConfiguredLine = editingLineId ? cartLines.find((line): line is ConfiguredCartLine => line.lineId === editingLineId && line.kind === 'configured') : undefined;
 
   const handleLogoDoubleClick = () => {
     track('logo_admin_login');
@@ -459,7 +482,7 @@ export default function Home() {
         <div className="catalogStatus">{catalogStatus === 'firestore' ? '● Catálogo actualizado' : catalogStatus === 'loading' ? 'Cargando catálogo…' : '● Mostrando catálogo de respaldo'}</div>
         <div className="menuGrid">{visibleProducts.map((product) => <article className="menuCard" key={product.id} role="button" tabIndex={0} aria-label={`Ver detalles de ${product.name}`} onClick={() => openProduct(product)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openProduct(product); } }}>
           {product.image ? <div className="menuImage" onClick={(event) => { event.stopPropagation(); openProduct(product); }}><Image src={product.image} alt={product.name} fill sizes="(max-width: 560px) 100vw, 33vw" {...protectedImageProps(imagesLocked)}/><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div> : <div className="menuImage menuImageEmpty"><span aria-hidden="true">Sin imagen</span><button type="button" className="shareBtn" aria-label={`Compartir ${product.name}`} onClick={(event) => shareProduct(product, event)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div>}
-          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div>{getVariantGroup(product.id) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{variantQtyFor(product.id) > 0 ? `${variantQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : <div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>}
+          <div className="menuTop"><strong>{product.name}</strong>{!isInternalCategory(product.category) && <span className="tag">{product.category}</span>}</div><p>{product.description}</p>{product.availability && <span className="small">{product.availability}</span>}<div className="menuPrice">{product.price ? `$${product.price}` : 'Consultar'}</div>{hasOptionGroups(product.id, optionGroups) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{configuredQtyFor(product.id) > 0 ? `${configuredQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : getVariantGroup(product.id) ? <button type="button" className="btn primary menuCardVariantCta" onClick={(event) => { event.stopPropagation(); openProduct(product); }}>{variantQtyFor(product.id) > 0 ? `${variantQtyFor(product.id)} en tu pedido — Elegir` : 'Elegir opciones'}</button> : <div className="qty"><button aria-label={`Quitar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, -1); }}>−</button><span>{quantityFor(product.id)}</span><button aria-label={`Agregar ${product.name}`} onClick={(event) => { event.stopPropagation(); addProduct(product, 1); track('add_to_cart', { product: product.id }); }}>+</button></div>}
         </article>)}</div>
       </div></Reveal>}</section>
 
@@ -593,7 +616,23 @@ export default function Home() {
             </div>
           </div>}
 
-          {selectedVariantGroup ? <VariantPicker
+          {selectedProductGroups.length > 0 ? <ProductConfigurator
+            product={selectedProduct}
+            groups={selectedProductGroups}
+            options={optionsForProduct(selectedProduct.id)}
+            initial={editingConfiguredLine ? { configuration: editingConfiguredLine.configuration, qty: editingConfiguredLine.qty } : undefined}
+            onAdd={(configuration, unitPrice, qty) => {
+              if (editingLineId) {
+                replaceConfigured(editingLineId, selectedProduct.id, selectedProduct.name, unitPrice, configuration, selectedProduct.sku, qty);
+              } else {
+                addConfigured(selectedProduct.id, selectedProduct.name, unitPrice, configuration, selectedProduct.sku, qty);
+              }
+              track('add_to_cart', { product: selectedProduct.id });
+              setSelectedProduct(null);
+              setEditingLineId(null);
+              setCartDrawerOpen(true);
+            }}
+          /> : selectedVariantGroup ? <VariantPicker
             product={selectedProduct}
             group={selectedVariantGroup}
             initial={editingVariantLine ? { variantId: editingVariantLine.variantId, qty: editingVariantLine.qty } : undefined}
