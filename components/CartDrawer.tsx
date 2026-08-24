@@ -22,14 +22,32 @@ type Props = {
 
 export default function CartDrawer({ lines, subtotal, count, open, onOpenChange, onIncrement, onDecrement, onRemove, onDuplicate, onEdit, onClear, onCheckout, onViewMenu }: Props) {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [isCartExpanded, setIsCartExpanded] = useState(true);
+
+  const cartInfo = `${count} ${count === 1 ? 'artículo' : 'artículos'}, $${subtotal}`;
 
   return (
     <>
       {count > 0 && !open && (
-        <button type="button" className="cart cartTrigger" onClick={() => onOpenChange(true)}>
-          <div><strong>🛒 {count} {count === 1 ? 'artículo' : 'artículos'}</strong><br/><span>${subtotal}</span></div>
-          <span className="cartTriggerCta">Ver pedido</span>
-        </button>
+        <div
+          className={`cart cartTrigger ${isCartExpanded ? 'cartExpanded' : 'cartMinimized'}`}
+          role="button"
+          tabIndex={0}
+          aria-expanded={isCartExpanded}
+          aria-label={isCartExpanded ? `${cartInfo}. Toca para minimizar.` : `${cartInfo}. Toca para ver el pedido completo.`}
+          onClick={() => setIsCartExpanded((expanded) => !expanded)}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsCartExpanded((expanded) => !expanded); } }}
+        >
+          {isCartExpanded ? <>
+            <div><strong>🛒 {count} {count === 1 ? 'artículo' : 'artículos'}</strong><br/><span>${subtotal}</span></div>
+            <button
+              type="button"
+              className="cartTriggerCta"
+              onClick={(event) => { event.stopPropagation(); onOpenChange(true); }}
+              onKeyDown={(event) => event.stopPropagation()}
+            >Ver pedido</button>
+          </> : <span className="cartPillText">🛒 {count} · ${subtotal}</span>}
+        </div>
       )}
 
       {open && <div className="productModalBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onOpenChange(false); }}>
