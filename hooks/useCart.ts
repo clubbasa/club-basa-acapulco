@@ -15,6 +15,7 @@ import {
   updateQty,
   type CartLine,
   type ComboComponent,
+  type ConfigurationGroup,
 } from '@/lib/cart';
 
 export function useCart(products: CatalogProduct[]) {
@@ -46,6 +47,10 @@ export function useCart(products: CatalogProduct[]) {
     setLines((current) => addLine(current, { kind: 'combo', comboId, name, unitPrice, components }, qty));
   };
 
+  const addConfigured = (productId: string, name: string, unitPrice: number, configuration: ConfigurationGroup[], sku: string | undefined, qty = 1) => {
+    setLines((current) => addLine(current, { kind: 'configured', productId, sku, name, unitPrice, configuration }, qty));
+  };
+
   const setQty = (lineId: string, qty: number) => setLines((current) => updateQty(current, lineId, qty));
   const remove = (lineId: string) => setLines((current) => removeLine(current, lineId));
   const clear = () => setLines(clearCart());
@@ -59,6 +64,10 @@ export function useCart(products: CatalogProduct[]) {
     setLines((current) => replaceLine(current, oldLineId, { kind: 'combo', comboId, name, unitPrice, components }, qty));
   };
 
+  const replaceConfigured = (oldLineId: string, productId: string, name: string, unitPrice: number, configuration: ConfigurationGroup[], sku: string | undefined, qty: number) => {
+    setLines((current) => replaceLine(current, oldLineId, { kind: 'configured', productId, sku, name, unitPrice, configuration }, qty));
+  };
+
   return {
     lines,
     subtotal: computeSubtotal(lines),
@@ -66,11 +75,13 @@ export function useCart(products: CatalogProduct[]) {
     addSimple,
     addVariant,
     addCombo,
+    addConfigured,
     setQty,
     remove,
     clear,
     duplicate,
     replaceVariant,
     replaceCombo,
+    replaceConfigured,
   };
 }
