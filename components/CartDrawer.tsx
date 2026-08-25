@@ -114,6 +114,7 @@ export default function CartDrawer({ lines, subtotal, count, open, onOpenChange,
                   <input id="cart-guest-phone" type="tel" value={guestPhone} onChange={(event) => onGuestPhoneChange(event.target.value)} placeholder="744 123 4567" />
                 </div>
               </div>}
+              <button type="button" className="btn secondary cartAddMore" onClick={() => { onOpenChange(false); onViewMenu(); }}>+ Agregar más artículos</button>
               <button type="button" className="btn primary cartCheckout" onClick={onCheckout}>Enviar pedido por WhatsApp</button>
               <p className="small cartLegalNote">Al enviar tu pedido aceptas nuestros <a href="/terminos-y-condiciones">Términos y Condiciones</a> y nuestra <a href="/politica-cambios-cancelaciones">Política de Cambios y Cancelaciones</a>.</p>
               <button type="button" className="cartClearLink" onClick={() => setConfirmClearOpen(true)}>Vaciar carrito</button>
