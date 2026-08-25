@@ -54,7 +54,8 @@
 .cartSummaryTotal{font-size:18px;font-weight:900;color:var(--ink)}
 .cartGuestFields{margin-top:14px}
 .cartGuestFields .field{margin-bottom:10px}
-.cartCheckout{width:100%;margin-top:16px;background:#25d366;color:#082b17}
+.cartAddMore{width:100%;margin-top:16px}
+.cartCheckout{width:100%;margin-top:10px;background:#25d366;color:#082b17}
 .cartClearLink{border:0;background:none;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;margin-top:12px;align-self:center;display:block;margin-left:auto;margin-right:auto}
 .confirmDialogBackdrop{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(20,16,12,.68);backdrop-filter:blur(5px)}
 .confirmDialog{width:min(380px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px;box-shadow:0 30px 90px rgba(0,0,0,.34)}
