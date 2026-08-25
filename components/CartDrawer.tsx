@@ -44,7 +44,7 @@ export default function CartDrawer({ lines, subtotal, count, open, onOpenChange,
           onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setIsCartExpanded((expanded) => !expanded); } }}
         >
           {isCartExpanded ? <>
-            <div><strong>🛒 {count} {count === 1 ? 'artículo' : 'artículos'}</strong><br/><span>${subtotal}</span></div>
+            <div><strong>🛒 {count} {count === 1 ? 'artículo' : 'artículos'}</strong><span className="cartCollapseHint" aria-hidden="true">⌄</span><br/><span>${subtotal}</span></div>
             <button
               type="button"
               className="cartTriggerCta"
