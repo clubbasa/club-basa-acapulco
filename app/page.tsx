@@ -25,6 +25,7 @@ import VariantPicker from '@/components/VariantPicker';
 import ProductConfigurator from '@/components/ProductConfigurator';
 import ComboBuilder from '@/components/ComboBuilder';
 import CartDrawer from '@/components/CartDrawer';
+import InstallAppButton from '@/components/InstallAppButton';
 import Footer from '@/components/Footer';
 
 const heroImage = 'https://res.cloudinary.com/m71breje/image/upload/v1786171381/panquecitos_sin_logo_i59l6l.jpg';
@@ -546,7 +547,7 @@ export default function Home() {
           <div className="sceneSub" style={{ display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="sectionHead"><h2>Comparte Club BASA</h2><p>Envíale la página a quien siempre pregunta “¿dónde compraste eso?”</p></div>
-              <div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a></div>
+              <div className="socials"><button className="social" onClick={share}>📤 Compartir</button><a className="social" href={whatsappShareUrl}>WhatsApp</a><a className="social" href="https://www.facebook.com/sharer/sharer.php" target="_blank" rel="noreferrer">Facebook</a><a className="social" href="https://twitter.com/intent/tweet" target="_blank" rel="noreferrer">X</a><InstallAppButton/></div>
             </div>
             <div>
               <div className="sectionHead"><h2>Contáctanos directo</h2><p>Dudas sobre tu pedido o disponibilidad, escríbenos por WhatsApp.</p></div>
