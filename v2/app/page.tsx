@@ -1,0 +1,17 @@
+import Link from 'next/link';
+import { demoProducts } from '@/lib/demo-data';
+import { ProductCard } from '@/components/product-card';
+
+export default function Home(){
+ return <main>
+  <section className="bg-oat"><div className="container grid min-h-[620px] items-center gap-10 py-16 md:grid-cols-2"><div>
+   <span className="rounded-full bg-mint/15 px-4 py-2 text-sm font-bold text-mint">Club de Nutrición BASA</span>
+   <h1 className="display mt-6 text-5xl font-bold leading-tight md:text-7xl">Sabor que se disfruta. Nutrición que acompaña.</h1>
+   <p className="mt-6 max-w-xl text-lg leading-8 text-ink/70">Panquecitos, desayunos y bebidas preparados con cariño en Acapulco.</p>
+   <div className="mt-8 flex flex-wrap gap-3"><Link href="/menu" className="rounded-full bg-toast px-6 py-3 font-bold text-white">Ver menú</Link><a href="https://wa.me/527445887237" className="rounded-full border-2 border-mint px-6 py-3 font-bold text-mint">WhatsApp</a></div>
+  </div><div className="overflow-hidden rounded-[2.5rem] bg-white shadow-soft"><video className="aspect-square h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata"><source src="/hero.mp4" type="video/mp4"/></video></div></div></section>
+  <section className="container py-20"><div className="max-w-3xl"><p className="font-bold uppercase tracking-[.2em] text-mint">Quiénes somos</p><h2 className="display mt-3 text-4xl font-bold">Una opción cercana para comer rico y cuidarte.</h2><p className="mt-5 text-lg leading-8 text-ink/70">En Club BASA no vendemos productos que curan enfermedades ni resultados milagrosos. Ofrecemos opciones de nutrición que te acompañan hacia un estilo de vida más saludable. Consulta a tu médico antes de iniciar cualquier cambio importante en tu alimentación.</p></div></section>
+  <section className="bg-[#F8F1E8] py-20"><div className="container"><div className="flex items-end justify-between gap-4"><div><p className="font-bold text-mint">Nuestro gancho</p><h2 className="display text-4xl font-bold">Los favoritos de BASA</h2></div><Link href="/menu" className="font-bold text-toast">Ver todo →</Link></div><div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">{demoProducts.map(p=><ProductCard key={p.id} p={p}/>)}</div></div></section>
+  <section className="container py-20"><div className="rounded-[2rem] bg-toast p-8 text-white md:p-12"><h2 className="display text-4xl font-bold">Visítanos en Acapulco</h2><p className="mt-3 text-white/75">Consulta nuestra ubicación y comparte Club BASA.</p><div className="mt-6"><a href="https://g.page/clubbasa" target="_blank" className="rounded-full bg-gold px-5 py-3 font-bold">Cómo llegar</a></div></div></section>
+ </main>
+}
