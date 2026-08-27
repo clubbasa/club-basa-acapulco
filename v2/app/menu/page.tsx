@@ -1,0 +1,3 @@
+import {demoProducts,categories} from '@/lib/demo-data';
+import {ProductCard} from '@/components/product-card';
+export default function Menu(){return <main className="container py-16"><div className="max-w-3xl"><p className="font-bold uppercase tracking-[.2em] text-mint">Catálogo</p><h1 className="display mt-2 text-5xl font-bold">El menú de Club BASA</h1><p className="mt-4 text-lg text-ink/65">Elige tus favoritos y agrégalos al carrito.</p></div>{categories.map(c=><section key={c} className="mt-14"><h2 className="display text-3xl font-bold">{c}</h2><div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">{demoProducts.filter(p=>p.category===c).map(p=><ProductCard key={p.id} p={p}/>)}</div></section>)}</main>}
