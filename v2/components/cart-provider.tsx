@@ -1,0 +1,7 @@
+'use client';
+import {createContext,useContext,useEffect,useMemo,useState} from 'react';
+export type CartItem={id:string;name:string;price:number;qty:number;sku?:string;customFlavors?:Record<string,string[]>;image?:string};
+type Ctx={items:CartItem[];add:(i:CartItem)=>void;remove:(id:string)=>void;setQty:(id:string,q:number)=>void;clear:()=>void;total:number};
+const Cart=createContext<Ctx|null>(null);
+export function CartProvider({children}:{children:React.ReactNode}){const[items,setItems]=useState<CartItem[]>([]);useEffect(()=>{try{setItems(JSON.parse(localStorage.getItem('basa-cart-v2')||'[]'))}catch{}},[]);useEffect(()=>{localStorage.setItem('basa-cart-v2',JSON.stringify(items))},[items]);const value=useMemo(()=>({items,add:(i:CartItem)=>setItems(x=>{const f=x.find(y=>y.id===i.id);return f?x.map(y=>y.id===i.id?{...y,qty:y.qty+i.qty}:y):[...x,i]}),remove:(id:string)=>setItems(x=>x.filter(y=>y.id!==id)),setQty:(id:string,q:number)=>setItems(x=>q<1?x.filter(y=>y.id!==id):x.map(y=>y.id===id?{...y,qty:q}:y)),clear:()=>setItems([]),total:items.reduce((s,i)=>s+i.price*i.qty,0)}),[items]);return <Cart.Provider value={value}>{children}</Cart.Provider>}
+export function useCart(){const c=useContext(Cart);if(!c)throw new Error('useCart fuera de CartProvider');return c}
