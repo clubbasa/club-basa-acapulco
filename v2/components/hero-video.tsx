@@ -1,0 +1,3 @@
+'use client';
+import {useEffect,useState} from 'react';import {doc,getDoc} from 'firebase/firestore';import {db} from '@/lib/firebase';
+export function HeroVideo(){const[url,setUrl]=useState('');useEffect(()=>{getDoc(doc(db,'settings','general')).then(s=>setUrl(s.data()?.heroVideoUrl||'')).catch(()=>{})},[]);if(!url)return <div className="aspect-square w-full bg-oat flex items-center justify-center"><span className="display text-6xl text-toast/30">BASA</span></div>;return <video className="aspect-square h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata"><source src={url} type="video/mp4"/></video>}
