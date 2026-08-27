@@ -1,0 +1,3 @@
+'use client';
+import {useEffect,useState} from 'react';import {collection,getDocs,query,orderBy} from 'firebase/firestore';import {db} from '@/lib/firebase';import {demoProducts} from '@/lib/demo-data';import {ProductCard} from './product-card';
+export function CatalogGrid(){const[data,setData]=useState(demoProducts);useEffect(()=>{getDocs(query(collection(db,'products'),orderBy('name'))).then(s=>{const x=s.docs.map(d=>({id:d.id,...d.data()} as any)).filter((p:any)=>p.active!==false);if(x.length)setData(x)}).catch(()=>{})},[]);return <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">{data.map(p=><ProductCard key={p.id} p={p}/>)}</div>}
