@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn(){ return request.auth != null; }
+  function self(uid){ return signedIn() && request.auth.uid == uid; }
+  function admin(){ return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active'; }
+  match /users/{uid} { allow read: if self(uid) || admin(); allow create: if self(uid) && request.resource.data.uid == uid && request.resource.data.role == 'customer'; allow update: if self(uid) && request.resource.data.role == resource.data.role && request.resource.data.status == resource.data.status || admin(); allow delete: if admin(); }
+  match /products/{id} { allow read: if true; allow write: if admin(); }
+  match /flavors/{id} { allow read: if true; allow write: if admin(); }
+  match /categories/{id} { allow read: if true; allow write: if admin(); }
+  match /settings/{id} { allow read: if true; allow write: if admin(); }
+  match /orders/{id} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read: if admin() || (signedIn() && resource.data.userId == request.auth.uid); allow update,delete: if admin(); }
+ }
+}
