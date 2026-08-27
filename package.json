@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cd v2 && npm run build",
     "start": "next start",
     "doctor": "npx react-doctor@latest"
   },
@@ -16,7 +16,8 @@
     "next": "^16.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "lucide-react": "^0.468.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
