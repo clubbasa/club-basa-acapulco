@@ -1,0 +1,3 @@
+'use client';
+import {useEffect,useState} from 'react';import {onAuthStateChanged} from 'firebase/auth';import {doc,getDoc} from 'firebase/firestore';import {auth,db} from '@/lib/firebase';
+export default function AdminLayout({children}:{children:React.ReactNode}){const[ok,setOk]=useState<boolean|null>(null);useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){setOk(false);return}const d=(await getDoc(doc(db,'users',u.uid))).data();setOk(d?.role==='admin'&&d?.status==='active')}),[]);if(ok===null)return <div className="container py-16">Verificando acceso…</div>;if(!ok)return <div className="container py-16"><h1 className="display text-3xl font-bold">Acceso restringido</h1></div>;return <>{children}</>}
