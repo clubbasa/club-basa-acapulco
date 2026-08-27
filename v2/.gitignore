@@ -1,0 +1,7 @@
+node_modules
+.next
+.env
+.env.local
+.firebase
+service-account*.json
+scripts/local-admin.*
