@@ -80,7 +80,7 @@
 /* Progressive enhancement: efecto cinematográfico nativo (Chrome/Edge) sin JS de scroll */
 @supports (animation-timeline: view()){
   .sceneInner{opacity:1;transform:none;filter:none;transition:none;animation:scene-cinematic linear both;animation-timeline:view();animation-range:cover 0% cover 100%}
-  @keyframes scene-cinematic{0%{opacity:.45;transform:scale(.96);filter:blur(3px)}18%{opacity:1;transform:scale(1);filter:blur(0)}82%{opacity:1;transform:scale(1);filter:blur(0)}100%{opacity:.45;transform:scale(.96);filter:blur(3px)}}
+  @keyframes scene-cinematic{0%{opacity:.45;transform:scale(.96)}18%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:.45;transform:scale(.96)}}
 }
 
 @media(prefers-reduced-motion: reduce){

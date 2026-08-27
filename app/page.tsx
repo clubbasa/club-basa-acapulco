@@ -430,7 +430,7 @@ export default function Home() {
         onDoubleClick={handleLogoDoubleClick}
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#encuentranos">Encuéntranos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a></nav>
-      <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir por WhatsApp</a>
+      <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir ahora</a>
       <button type="button" className="themeToggle" aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} onClick={toggleTheme}>
         {theme === 'dark'
           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
