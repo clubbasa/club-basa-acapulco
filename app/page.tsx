@@ -403,11 +403,6 @@ export default function Home() {
   const editingVariantLine = editingLineId ? cartLines.find((line): line is VariantCartLine => line.lineId === editingLineId && line.kind === 'variant') : undefined;
   const editingConfiguredLine = editingLineId ? cartLines.find((line): line is ConfiguredCartLine => line.lineId === editingLineId && line.kind === 'configured') : undefined;
 
-  const handleLogoDoubleClick = () => {
-    track('logo_admin_login');
-    window.location.href = '/login';
-  };
-
   // Featured products for the cinematic scenes below — pulled from the same
   // live catalog data as the grid, never hardcoded. Gracefully absent in the
   // fallback catalog (some don't exist there), every usage below is optional.
@@ -425,9 +420,7 @@ export default function Home() {
       <a
         className="logo"
         href="#inicio"
-        aria-label="Club BASA. Un clic vuelve al inicio. Doble clic abre el acceso administrativo."
-        title="Clic: inicio · Doble clic/tap: acceso administrativo"
-        onDoubleClick={handleLogoDoubleClick}
+        aria-label="Club BASA Acapulco. Volver al inicio."
       ><span className="logoBlack">CLUB</span><span>BASA</span><small>ACAPULCO</small></a>
       <nav className="navlinks"><a href="#menu" onClick={(event) => { event.preventDefault(); openMenu(); }}>Menú</a><a href="#beneficios">Beneficios</a><a href="#envios">Envíos</a><a href="#encuentranos">Encuéntranos</a><a href="#faq">FAQ</a><a href="/blog">Blog</a><a href="#contacto">Contacto</a><a href="/mi-cuenta">Mi cuenta</a><a href="/registro" className="navVip" onClick={(event) => { event.preventDefault(); handleVipPromoClick(); }}>★ Promoción VIP</a></nav>
       <a className="navcta" href={waLink('Hola Club BASA, quiero hacer un pedido.')} onClick={() => track('cta_click', { cta: 'header_order' })}>◔ &nbsp;Pedir ahora</a>
