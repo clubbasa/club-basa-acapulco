@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "cd v2 && npm run build",
-    "start": "next start",
+    "dev": "cd v2 && npm run dev",
+    "build": "cd v2 && npm install && npm run build",
+    "start": "cd v2 && npm run start",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
@@ -24,6 +24,9 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.185.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
     "react-doctor": "^0.9.12",
     "typescript": "^5.0.0"
   }
