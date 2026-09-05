@@ -28,6 +28,11 @@ export type CatalogProduct = Product & {
 const productsRef = collection(db, 'products');
 const categoriesRef = collection(db, 'categories');
 
+// "Gancho" is an internal merchandising category (attraction/loss-leader products).
+// Its products stay visible under "Todos" — only the category label is hidden from customers.
+const INTERNAL_ONLY_CATEGORIES = new Set(['gancho']);
+export const isInternalCategory = (name: string) => INTERNAL_ONLY_CATEGORIES.has(name.toLowerCase());
+
 export async function getCatalog() {
   const [productSnap, categorySnap] = await Promise.all([
     getDocs(query(productsRef, orderBy('sortOrder', 'asc'))),
